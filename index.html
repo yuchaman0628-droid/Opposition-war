@@ -1,0 +1,438 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Opposition-war</title>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            background-color: #111;
+            font-family: 'Arial', sans-serif;
+            user-select: none;
+        }
+
+        #game-container {
+            width: 100vw;
+            height: 100vh;
+        }
+
+        /* UI オーバーレイ */
+        .overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            color: #fff;
+            text-align: center;
+            background: rgba(0, 0, 0, 0.7);
+            z-index: 10;
+        }
+
+        h1 {
+            font-size: 4rem;
+            margin-bottom: 10px;
+            letter-spacing: 5px;
+            color: #ff3333;
+            text-shadow: 0 0 10px #ff0000, 0 0 20px #000;
+        }
+
+        p {
+            font-size: 1.2rem;
+            margin-bottom: 30px;
+            color: #ccc;
+        }
+
+        .btn {
+            padding: 15px 40px;
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: #fff;
+            background: linear-gradient(45deg, #ff0000, #990000);
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            box-shadow: 0 0 15px rgba(255, 0, 0, 0.5);
+            transition: 0.2s;
+        }
+
+        .btn:hover {
+            transform: scale(1.05);
+            box-shadow: 0 0 25px rgba(255, 0, 0, 0.8);
+        }
+
+        /* HUD (プレイ中画面) */
+        #hud {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            color: #fff;
+            font-size: 1.2rem;
+            z-index: 5;
+            display: none;
+            text-shadow: 2px 2px 4px #000;
+        }
+
+        #controls-info {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            color: #aaa;
+            font-size: 0.9rem;
+            z-index: 5;
+            display: none;
+            background: rgba(0,0,0,0.5);
+            padding: 10px;
+            border-radius: 5px;
+        }
+    </style>
+    <!-- Three.js 3Dライブラリの読み込み -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+</head>
+<body>
+
+    <div id="game-container"></div>
+
+    <!-- HUD -->
+    <div id="hud">
+        <div>PLAYER HP: <span id="player-hp">100</span></div>
+        <div>TANK HP: <span id="tank-hp">200</span></div>
+    </div>
+
+    <div id="controls-info">
+        [W/S] 前進/後退 | [A/D] 旋回 | [SPACE] 攻撃
+    </div>
+
+    <!-- タイトル画面 -->
+    <div id="title-screen" class="overlay">
+        <h1>Opposition-war</h1>
+        <p>バイク VS 最強戦車 — 激闘の3Dバトル</p>
+        <button class="btn" onclick="startGame()">GAME START</button>
+    </div>
+
+    <!-- ゲームオーバー画面 -->
+    <div id="gameover-screen" class="overlay" style="display: none;">
+        <h1 id="gameover-title">GAME OVER</h1>
+        <p id="gameover-msg">あなたのバイクは破壊されました...</p>
+        <button class="btn" onclick="restartGame()">RETRY</button>
+    </div>
+
+    <script>
+        let scene, camera, renderer;
+        let player, tank;
+        let bullets = [];
+        let tankBullets = [];
+        let keys = {};
+        let isGameRunning = false;
+
+        let playerStats = { hp: 100, speed: 0, maxSpeed: 0.6, accel: 0.02, rotSpeed: 0.04 };
+        let tankStats = { hp: 200, lastShoot: 0 };
+
+        function init() {
+            // シーンの作成
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x1a1a24);
+            scene.fog = new THREE.FogExp2(0x1a1a24, 0.015);
+
+            // カメラの設定
+            camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000);
+
+            // レンダラーの設定
+            renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.shadowMap.enabled = true;
+            document.getElementById('game-container').appendChild(renderer.domElement);
+
+            // ライティング
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.4);
+            scene.add(ambientLight);
+
+            const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
+            dirLight.position.set(50, 100, 50);
+            dirLight.castShadow = true;
+            scene.add(dirLight);
+
+            // 地面（フィールド）
+            const floorGeo = new THREE.PlaneGeometry(200, 200);
+            const floorMat = new THREE.MeshStandardMaterial({ color: 0x333333, roughness: 0.8 });
+            const floor = new THREE.Mesh(floorGeo, floorMat);
+            floor.rotation.x = -Math.PI / 2;
+            floor.receiveShadow = true;
+            scene.add(floor);
+
+            // グリッドヘルパー（視認性向上）
+            const grid = new THREE.GridHelper(200, 40, 0xff0000, 0x555555);
+            grid.position.y = 0.01;
+            scene.add(grid);
+
+            // オブジェクトの作成
+            createPlayerBike();
+            createTank();
+
+            // イベントリスナー
+            window.addEventListener('keydown', e => keys[e.code] = true);
+            window.addEventListener('keyup', e => keys[e.code] = false);
+            window.addEventListener('resize', onWindowResize);
+
+            // アニメーションループ開始
+            animate();
+        }
+
+        // バイク（プレイヤー）の3Dモデル作成
+        function createPlayerBike() {
+            player = new THREE.Group();
+
+            // 車体
+            const bodyMat = new THREE.MeshStandardMaterial({ color: 0x00ccff, metalness: 0.5 });
+            const body = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.5, 1.8), bodyMat);
+            body.position.y = 0.5;
+            body.castShadow = true;
+            player.add(body);
+
+            // 前後輪タイヤ
+            const wheelMat = new THREE.MeshStandardMaterial({ color: 0x111111 });
+            const wheelGeo = new THREE.CylinderGeometry(0.4, 0.4, 0.2, 16);
+            
+            const frontWheel = new THREE.Mesh(wheelGeo, wheelMat);
+            frontWheel.rotation.z = Math.PI / 2;
+            frontWheel.position.set(0, 0.4, 0.8);
+            player.add(frontWheel);
+
+            const backWheel = frontWheel.clone();
+            backWheel.position.set(0, 0.4, -0.8);
+            player.add(backWheel);
+
+            player.position.set(0, 0, 30);
+            scene.add(player);
+        }
+
+        // 戦車（敵）の3Dモデル作成
+        function createTank() {
+            tank = new THREE.Group();
+
+            // 戦車本体
+            const bodyMat = new THREE.MeshStandardMaterial({ color: 0x336633, roughness: 0.6 });
+            const body = new THREE.Mesh(new THREE.BoxGeometry(3, 1.2, 4), bodyMat);
+            body.position.y = 0.8;
+            body.castShadow = true;
+            tank.add(body);
+
+            // 砲塔
+            const turret = new THREE.Mesh(new THREE.BoxGeometry(2, 0.8, 2), bodyMat);
+            turret.position.set(0, 1.6, 0);
+            tank.add(turret);
+
+            // 主砲
+            const cannonMat = new THREE.MeshStandardMaterial({ color: 0x111111 });
+            const cannon = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.15, 2.5), cannonMat);
+            cannon.rotation.x = Math.PI / 2;
+            cannon.position.set(0, 1.6, 1.5);
+            tank.add(cannon);
+
+            tank.position.set(0, 0, -30);
+            scene.add(tank);
+        }
+
+        function startGame() {
+            document.getElementById('title-screen').style.display = 'none';
+            document.getElementById('hud').style.display = 'block';
+            document.getElementById('controls-info').style.display = 'block';
+            resetStats();
+            isGameRunning = true;
+        }
+
+        function restartGame() {
+            document.getElementById('gameover-screen').style.display = 'none';
+            resetStats();
+            isGameRunning = true;
+        }
+
+        function resetStats() {
+            playerStats.hp = 100;
+            playerStats.speed = 0;
+            tankStats.hp = 200;
+            player.position.set(0, 0, 30);
+            player.rotation.set(0, 0, 0);
+            tank.position.set(0, 0, -30);
+            
+            // 弾を消去
+            bullets.forEach(b => scene.remove(b.mesh));
+            tankBullets.forEach(b => scene.remove(b.mesh));
+            bullets = [];
+            tankBullets = [];
+
+            updateHUD();
+        }
+
+        function updateHUD() {
+            document.getElementById('player-hp').innerText = Math.max(0, playerStats.hp);
+            document.getElementById('tank-hp').innerText = Math.max(0, tankStats.hp);
+        }
+
+        // 弾の発射（バイク）
+        function shootPlayerBullet() {
+            const geo = new THREE.SphereGeometry(0.2, 8, 8);
+            const mat = new THREE.MeshBasicMaterial({ color: 0x00ffff });
+            const mesh = new THREE.Mesh(geo, mat);
+            
+            mesh.position.copy(player.position);
+            mesh.position.y += 0.5;
+
+            const dir = new THREE.Vector3(0, 0, -1).applyQuaternion(player.quaternion);
+            bullets.push({ mesh: mesh, dir: dir, life: 100 });
+            scene.add(mesh);
+        }
+
+        // 砲撃の発射（戦車）
+        function shootTankBullet() {
+            const geo = new THREE.SphereGeometry(0.5, 8, 8);
+            const mat = new THREE.MeshBasicMaterial({ color: 0xff5500 });
+            const mesh = new THREE.Mesh(geo, mat);
+
+            mesh.position.copy(tank.position);
+            mesh.position.y += 1.6;
+
+            // プレイヤーの方向へ飛ばす
+            const dir = new THREE.Vector3().subVectors(player.position, tank.position).normalize();
+            tankBullets.push({ mesh: mesh, dir: dir, life: 150 });
+            scene.add(mesh);
+        }
+
+        function updatePlayer() {
+            // アクセル・ブレーキ
+            if (keys['KeyW']) playerStats.speed = Math.min(playerStats.speed + playerStats.accel, playerStats.maxSpeed);
+            else if (keys['KeyS']) playerStats.speed = Math.max(playerStats.speed - playerStats.accel, -playerStats.maxSpeed / 2);
+            else playerStats.speed *= 0.95; // 減速
+
+            // ハンドル操作
+            if (keys['KeyA']) player.rotation.y += playerStats.rotSpeed;
+            if (keys['KeyD']) player.rotation.y -= playerStats.rotSpeed;
+
+            // 移動計算
+            player.translateZ(-playerStats.speed);
+
+            // 移動範囲制限（外に出ないように）
+            player.position.x = Math.max(-90, Math.min(90, player.position.x));
+            player.position.z = Math.max(-90, Math.min(90, player.position.z));
+
+            // 攻撃
+            if (keys['Space']) {
+                if (!player.lastShoot || Date.now() - player.lastShoot > 200) {
+                    shootPlayerBullet();
+                    player.lastShoot = Date.now();
+                }
+            }
+
+            // カメラフォロー
+            const camOffset = new THREE.Vector3(0, 3, 7).applyQuaternion(player.quaternion);
+            camera.position.copy(player.position).add(camOffset);
+            camera.lookAt(player.position.clone().add(new THREE.Vector3(0, 1, 0)));
+        }
+
+        function updateTank() {
+            // 戦車は常にプレイヤーの方を向く
+            tank.lookAt(player.position.x, tank.position.y, player.position.z);
+
+            // 一定距離を保ちながら接近
+            const dist = tank.position.distanceTo(player.position);
+            if (dist > 15) {
+                tank.translateZ(0.08);
+            }
+
+            // 定期的な攻撃（2秒毎）
+            if (Date.now() - tankStats.lastShoot > 2000) {
+                shootTankBullet();
+                tankStats.lastShoot = Date.now();
+            }
+        }
+
+        function updateBullets() {
+            // プレイヤーの弾処理
+            for (let i = bullets.length - 1; i >= 0; i--) {
+                let b = bullets[i];
+                b.mesh.position.addScaledVector(b.dir, 1.2);
+                b.life--;
+
+                // 当たり判定 (戦車)
+                if (b.mesh.position.distanceTo(tank.position) < 2.5) {
+                    tankStats.hp -= 10;
+                    scene.remove(b.mesh);
+                    bullets.splice(i, 1);
+                    updateHUD();
+                    checkWinLoss();
+                    continue;
+                }
+
+                if (b.life <= 0) {
+                    scene.remove(b.mesh);
+                    bullets.splice(i, 1);
+                }
+            }
+
+            // 戦車の弾処理
+            for (let i = tankBullets.length - 1; i >= 0; i--) {
+                let b = tankBullets[i];
+                b.mesh.position.addScaledVector(b.dir, 0.8);
+                b.life--;
+
+                // 当たり判定 (プレイヤー)
+                if (b.mesh.position.distanceTo(player.position) < 1.2) {
+                    playerStats.hp -= 20;
+                    scene.remove(b.mesh);
+                    tankBullets.splice(i, 1);
+                    updateHUD();
+                    checkWinLoss();
+                    continue;
+                }
+
+                if (b.life <= 0) {
+                    scene.remove(b.mesh);
+                    tankBullets.splice(i, 1);
+                }
+            }
+        }
+
+        function checkWinLoss() {
+            if (tankStats.hp <= 0) {
+                endGame("VICTORY!", "戦車を打ち破りました！ゲームクリア！");
+            } else if (playerStats.hp <= 0) {
+                endGame("GAME OVER", "あなたのバイクは破壊されました...");
+            }
+        }
+
+        function endGame(title, msg) {
+            isGameRunning = false;
+            document.getElementById('gameover-title').innerText = title;
+            document.getElementById('gameover-msg').innerText = msg;
+            document.getElementById('gameover-screen').style.display = 'flex';
+        }
+
+        function animate() {
+            requestAnimationFrame(animate);
+
+            if (isGameRunning) {
+                updatePlayer();
+                updateTank();
+                updateBullets();
+            }
+
+            renderer.render(scene, camera);
+        }
+
+        function onWindowResize() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        }
+
+        // 起動処理
+        init();
+    </script>
+</body>
+</html>
