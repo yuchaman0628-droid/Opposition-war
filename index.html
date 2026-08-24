@@ -5,537 +5,647 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Opposition-war</title>
     <style>
-        * {
-            box-sizing: border-box;
-        }
+        * { box-sizing: border-box; }
         body {
             margin: 0;
             overflow: hidden;
-            background-color: #05050a;
+            background-color: #030308;
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             user-select: none;
+            color: #fff;
         }
 
-        #game-container {
-            width: 100vw;
-            height: 100vh;
-        }
+        #game-container { width: 100vw; height: 100vh; }
 
-        /* 被弾時の赤フラッシュ効果 */
-        #damage-flash {
+        /* フラッシュエフェクト */
+        #flash-overlay {
             position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(255, 0, 0, 0.3);
-            pointer-events: none;
-            opacity: 0;
-            transition: opacity 0.1s ease-out;
-            z-index: 20;
+            top: 0; left: 0; width: 100%; height: 100%;
+            pointer-events: none; opacity: 0; transition: opacity 0.1s ease-out; z-index: 20;
         }
 
-        /* UI オーバーレイ */
+        /* 全画面オーバーレイUI */
         .overlay {
             position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            color: #fff;
-            text-align: center;
-            background: rgba(5, 5, 12, 0.85);
-            backdrop-filter: blur(5px);
+            top: 0; left: 0; width: 100%; height: 100%;
+            display: flex; flex-direction: column; justify-content: center; align-items: center;
+            background: rgba(5, 5, 12, 0.88); backdrop-filter: blur(8px);
             z-index: 10;
         }
 
         h1 {
-            font-size: 4.5rem;
-            margin-bottom: 10px;
-            letter-spacing: 6px;
-            color: #00f0ff;
-            text-shadow: 0 0 15px #00f0ff, 0 0 30px #ff0055;
+            font-size: 3.8rem; margin: 0 0 10px 0; letter-spacing: 6px;
+            color: #00f0ff; text-shadow: 0 0 20px #00f0ff, 0 0 40px #ff0055;
         }
 
-        p {
-            font-size: 1.2rem;
-            margin-bottom: 30px;
-            color: #a0a5c0;
+        p { font-size: 1.1rem; margin-bottom: 20px; color: #a0a5c0; }
+
+        /* セレクトコンテナ */
+        .config-grid {
+            display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px;
+            max-width: 900px; width: 90%; margin-bottom: 25px;
         }
 
-        .selection-container {
-            display: flex;
-            gap: 20px;
-            margin-bottom: 30px;
+        .config-box {
+            background: rgba(255, 255, 255, 0.04); border: 1px solid #333;
+            border-radius: 8px; padding: 12px; text-align: left;
         }
 
-        .select-card {
-            background: rgba(255, 255, 255, 0.05);
-            border: 2px solid #333;
-            border-radius: 10px;
-            padding: 20px 30px;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            width: 200px;
-        }
+        .config-box h4 { margin: 0 0 10px 0; color: #00f0ff; border-bottom: 1px solid rgba(0, 240, 255, 0.2); padding-bottom: 5px; }
 
-        .select-card:hover, .select-card.active {
-            border-color: #00f0ff;
-            background: rgba(0, 240, 255, 0.15);
-            box-shadow: 0 0 20px rgba(0, 240, 255, 0.4);
-            transform: translateY(-5px);
-        }
+        label { display: block; font-size: 0.85rem; color: #ccc; margin-top: 8px; }
 
-        .select-card h3 {
-            margin: 0 0 10px 0;
-            font-size: 1.5rem;
-            color: #fff;
-        }
-
-        .select-card p {
-            font-size: 0.9rem;
-            margin: 0;
-            color: #aaa;
+        select, input[type="range"] {
+            width: 100%; padding: 6px; background: #111525; border: 1px solid #00f0ff;
+            color: #fff; border-radius: 4px; margin-top: 4px; font-size: 0.9rem;
         }
 
         .btn {
-            padding: 15px 50px;
-            font-size: 1.5rem;
-            font-weight: bold;
-            color: #fff;
-            background: linear-gradient(45deg, #ff0055, #ff5500);
-            border: none;
-            border-radius: 30px;
-            cursor: pointer;
-            box-shadow: 0 0 20px rgba(255, 0, 85, 0.6);
-            transition: 0.2s;
+            padding: 12px 40px; font-size: 1.3rem; font-weight: bold; color: #fff;
+            background: linear-gradient(45deg, #ff0055, #ff5500); border: none;
+            border-radius: 30px; cursor: pointer; box-shadow: 0 0 20px rgba(255, 0, 85, 0.6);
+            transition: 0.2s; margin: 5px;
         }
 
-        .btn:hover {
-            transform: scale(1.05);
-            box-shadow: 0 0 35px rgba(255, 0, 85, 0.9);
-        }
+        .btn:hover { transform: scale(1.05); box-shadow: 0 0 35px rgba(255, 0, 85, 0.9); }
+        .btn-secondary { background: linear-gradient(45deg, #0088ff, #00f0ff); box-shadow: 0 0 15px rgba(0, 240, 255, 0.5); }
 
         /* HUD */
         #hud {
-            position: absolute;
-            top: 20px;
-            left: 20px;
-            color: #fff;
-            font-size: 1.2rem;
-            z-index: 5;
-            display: none;
-            background: rgba(10, 10, 20, 0.7);
-            padding: 15px 20px;
-            border-radius: 8px;
-            border: 1px solid rgba(0, 240, 255, 0.3);
-            text-shadow: 0 0 5px #000;
+            position: absolute; top: 20px; left: 20px; z-index: 5; display: none;
+            background: rgba(10, 10, 20, 0.75); padding: 15px 20px; border-radius: 8px;
+            border: 1px solid rgba(0, 240, 255, 0.3); text-shadow: 0 0 5px #000;
         }
 
-        .hp-bar-bg {
-            width: 200px;
-            height: 12px;
-            background: #222;
-            border-radius: 6px;
-            overflow: hidden;
-            margin-top: 4px;
-            margin-bottom: 12px;
-            border: 1px solid #444;
-        }
-
-        .hp-bar-fill {
-            height: 100%;
-            width: 100%;
-            transition: width 0.2s ease;
-        }
-
+        .hp-bar-bg { width: 220px; height: 12px; background: #222; border-radius: 6px; overflow: hidden; margin: 4px 0 10px 0; }
+        .hp-bar-fill { height: 100%; width: 100%; transition: width 0.15s ease; }
         #player-hp-fill { background: linear-gradient(90deg, #00ff88, #00f0ff); }
         #enemy-hp-fill { background: linear-gradient(90deg, #ff0055, #ff5500); }
 
-        #controls-info {
-            position: absolute;
-            bottom: 20px;
-            left: 20px;
-            color: #00f0ff;
-            font-size: 0.9rem;
-            z-index: 5;
-            display: none;
-            background: rgba(10, 10, 20, 0.7);
-            padding: 12px 18px;
-            border-radius: 8px;
-            border: 1px solid rgba(0, 240, 255, 0.3);
+        #pause-btn-hud {
+            position: absolute; top: 20px; right: 20px; z-index: 5; display: none;
+            padding: 8px 18px; font-size: 1rem;
         }
+
+        #controls-info {
+            position: absolute; bottom: 20px; left: 20px; color: #00f0ff; font-size: 0.85rem;
+            z-index: 5; display: none; background: rgba(10, 10, 20, 0.75); padding: 10px 15px;
+            border-radius: 8px; border: 1px solid rgba(0, 240, 255, 0.3);
+        }
+
+        /* ポーズ画面の設定スライダー */
+        .volume-group { margin: 15px 0; width: 260px; text-align: left; }
     </style>
-    <!-- Three.js & OrbitControls 読み込み -->
+    <!-- Three.js & OrbitControls -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
 </head>
 <body>
 
     <div id="game-container"></div>
-    <div id="damage-flash"></div>
+    <div id="flash-overlay"></div>
 
     <!-- HUD -->
     <div id="hud">
-        <div>PLAYER HP (<span id="player-type-label">BIKE</span>)</div>
+        <div>PLAYER HP (<span id="player-label">BIKE</span>)</div>
         <div class="hp-bar-bg"><div id="player-hp-fill" class="hp-bar-fill"></div></div>
-        
-        <div>ENEMY HP (<span id="enemy-type-label">TANK</span>)</div>
+        <div>ENEMY HP (<span id="enemy-label">TANK</span>)</div>
         <div class="hp-bar-bg"><div id="enemy-hp-fill" class="hp-bar-fill"></div></div>
     </div>
 
+    <button id="pause-btn-hud" class="btn btn-secondary" onclick="togglePause()">PAUSE [P]</button>
+
     <div id="controls-info">
-        [W/S] 前進/後退 | [A/D] 旋回 | [SPACE] 攻撃 | [ドラッグ] 視点操作 | [ホイール] ズーム
+        [W/S] 移動 | [A/D] 旋回 | [SPACE] 攻撃 | [P/ESC] ポーズ | [ドラッグ] 視点変更
     </div>
 
-    <!-- タイトル画面 -->
+    <!-- タイトル＆設定画面 -->
     <div id="title-screen" class="overlay">
         <h1>Opposition-war</h1>
-        <p>乗るマシンを選んで出撃せよ！</p>
+        <p>機体・アタッチメント・ステージをカスタムして出撃せよ！</p>
         
-        <div class="selection-container">
-            <div id="select-bike" class="select-card active" onclick="selectVehicle('bike')">
-                <h3>BIKE</h3>
-                <p>機動力重視<br>連射攻撃 / 高速移動</p>
+        <div class="config-grid">
+            <!-- プレイヤータイプ設定 -->
+            <div class="config-box">
+                <h4>1. 操作タイプ</h4>
+                <label>基本カテゴリ</label>
+                <select id="sel-player-type" onchange="updateCustomOptions()">
+                    <option value="bike">バイク (機動特化)</option>
+                    <option value="tank">戦車 (重火力・高耐久)</option>
+                </select>
+                <label>機体モデル</label>
+                <select id="sel-vehicle-model"></select>
             </div>
-            <div id="select-tank" class="select-card" onclick="selectVehicle('tank')">
-                <h3>TANK</h3>
-                <p>火力・装甲重視<br>強力な砲撃 / 重装甲</p>
+
+            <!-- アタッチメント設定 -->
+            <div class="config-box">
+                <h4>2. アタッチメント</h4>
+                <label>主兵装</label>
+                <select id="sel-attachment-weapon">
+                    <option value="standard">標準キャノン (バランス)</option>
+                    <option value="rapid">高圧ラピッドガン (連射)</option>
+                    <option value="heavy">メガブラスター (単発高威力)</option>
+                </select>
+                <label>強化モジュール</label>
+                <select id="sel-attachment-mod">
+                    <option value="armor">重装甲プレート (HP+20%)</option>
+                    <option value="turbo">ターボブースター (移動速度+20%)</option>
+                </select>
+            </div>
+
+            <!-- ステージ & 敵設定 -->
+            <div class="config-box">
+                <h4>3. ステージ & 敵</h4>
+                <label>バトルステージ</label>
+                <select id="sel-stage">
+                    <option value="cyber">サイバーネオンシティ</option>
+                    <option value="mars">火星レッドデザート</option>
+                    <option value="lava">溶岩アリーナ</option>
+                </select>
+                <label>敵機体モデル</label>
+                <select id="sel-enemy-model"></select>
             </div>
         </div>
 
-        <button class="btn" onclick="startGame()">GAME START</button>
+        <button class="btn" onclick="startGame()">BATTLE START</button>
     </div>
 
-    <!-- ゲームオーバー画面 -->
+    <!-- ポーズ画面 -->
+    <div id="pause-screen" class="overlay" style="display: none;">
+        <h1>PAUSED</h1>
+        <div class="volume-group">
+            <label>BGM 音量: <span id="bgm-val">50%</span></label>
+            <input type="range" id="slider-bgm" min="0" max="100" value="50" oninput="updateAudioSettings()">
+        </div>
+        <div class="volume-group">
+            <label>効果音 (SE) 音量: <span id="sfx-val">70%</span></label>
+            <input type="range" id="slider-sfx" min="0" max="100" value="70" oninput="updateAudioSettings()">
+        </div>
+        <div style="margin-top: 20px;">
+            <button class="btn btn-secondary" onclick="togglePause()">再開</button>
+            <button class="btn" onclick="returnToTitle()">タイトルへ戻る</button>
+        </div>
+    </div>
+
+    <!-- リザルト画面 -->
     <div id="gameover-screen" class="overlay" style="display: none;">
-        <h1 id="gameover-title">GAME OVER</h1>
-        <p id="gameover-msg">あなたのマシンは撃破されました...</p>
+        <h1 id="gameover-title">VICTORY</h1>
+        <p id="gameover-msg">ミッション完了！</p>
         <button class="btn" onclick="restartGame()">RETRY</button>
+        <button class="btn btn-secondary" onclick="returnToTitle()">TITLE</button>
     </div>
 
     <script>
+        // Web Audio API によるサウンド生成システム (外部ファイル不要)
+        let audioCtx = null;
+        let bgmGain = null, sfxGain = null;
+        let bgmInterval = null;
+
+        function initAudio() {
+            if (audioCtx) return;
+            const AudioContext = window.AudioContext || window.webkitAudioContext;
+            audioCtx = new AudioContext();
+
+            bgmGain = audioCtx.createGain();
+            sfxGain = audioCtx.createGain();
+
+            bgmGain.connect(audioCtx.destination);
+            sfxGain.connect(audioCtx.destination);
+            
+            updateAudioSettings();
+            startBGM();
+        }
+
+        function updateAudioSettings() {
+            const bgmVal = document.getElementById('slider-bgm').value;
+            const sfxVal = document.getElementById('slider-sfx').value;
+            document.getElementById('bgm-val').innerText = bgmVal + '%';
+            document.getElementById('sfx-val').innerText = sfxVal + '%';
+
+            if (bgmGain) bgmGain.gain.value = (bgmVal / 100) * 0.25;
+            if (sfxGain) sfxGain.gain.value = (sfxVal / 100) * 0.5;
+        }
+
+        function playSound(type) {
+            if (!audioCtx) return;
+            const now = audioCtx.currentTime;
+
+            if (type === 'shoot') {
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                osc.type = 'sawtooth';
+                osc.frequency.setValueAtTime(300, now);
+                osc.frequency.exponentialRampToValueAtTime(40, now + 0.12);
+                gain.gain.setValueAtTime(0.4, now);
+                gain.gain.exponentialRampToValueAtTime(0.01, now + 0.12);
+                osc.connect(gain); gain.connect(sfxGain);
+                osc.start(now); osc.stop(now + 0.12);
+            } else if (type === 'hit' || type === 'ram') {
+                const bufSize = audioCtx.sampleRate * (type === 'ram' ? 0.3 : 0.15);
+                const buffer = audioCtx.createBuffer(1, bufSize, audioCtx.sampleRate);
+                const data = buffer.getChannelData(0);
+                for (let i = 0; i < bufSize; i++) data[i] = Math.random() * 2 - 1;
+                const noise = audioCtx.createBufferSource();
+                noise.buffer = buffer;
+                const filter = audioCtx.createBiquadFilter();
+                filter.type = 'lowpass';
+                filter.frequency.setValueAtTime(type === 'ram' ? 1200 : 600, now);
+                filter.frequency.exponentialRampToValueAtTime(80, now + (type === 'ram' ? 0.3 : 0.15));
+                const gain = audioCtx.createGain();
+                gain.gain.setValueAtTime(type === 'ram' ? 0.8 : 0.5, now);
+                gain.gain.exponentialRampToValueAtTime(0.01, now + (type === 'ram' ? 0.3 : 0.15));
+                noise.connect(filter); filter.connect(gain); gain.connect(sfxGain);
+                noise.start(now);
+            } else if (type === 'win') {
+                const notes = [261.63, 329.63, 392.00, 523.25, 659.25];
+                notes.forEach((freq, idx) => {
+                    const osc = audioCtx.createOscillator();
+                    const gain = audioCtx.createGain();
+                    osc.type = 'triangle';
+                    osc.frequency.setValueAtTime(freq, now + idx * 0.1);
+                    gain.gain.setValueAtTime(0.5, now + idx * 0.1);
+                    gain.gain.exponentialRampToValueAtTime(0.01, now + idx * 0.1 + 0.3);
+                    osc.connect(gain); gain.connect(sfxGain);
+                    osc.start(now + idx * 0.1); osc.stop(now + idx * 0.1 + 0.3);
+                });
+            } else if (type === 'lose') {
+                const notes = [300, 250, 200, 140];
+                notes.forEach((freq, idx) => {
+                    const osc = audioCtx.createOscillator();
+                    const gain = audioCtx.createGain();
+                    osc.type = 'sawtooth';
+                    osc.frequency.setValueAtTime(freq, now + idx * 0.15);
+                    gain.gain.setValueAtTime(0.5, now + idx * 0.15);
+                    gain.gain.exponentialRampToValueAtTime(0.01, now + idx * 0.15 + 0.25);
+                    osc.connect(gain); gain.connect(sfxGain);
+                    osc.start(now + idx * 0.15); osc.stop(now + idx * 0.15 + 0.25);
+                });
+            }
+        }
+
+        // BGMループ生成
+        function startBGM() {
+            if (bgmInterval) clearInterval(bgmInterval);
+            let step = 0;
+            const bassline = [110, 110, 130, 110, 146.8, 130, 110, 98];
+            bgmInterval = setInterval(() => {
+                if (!audioCtx || !isGameRunning || isPaused) return;
+                const now = audioCtx.currentTime;
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                osc.type = 'sawtooth';
+                osc.frequency.setValueAtTime(bassline[step % bassline.length], now);
+                gain.gain.setValueAtTime(0.15, now);
+                gain.gain.exponentialRampToValueAtTime(0.01, now + 0.15);
+                osc.connect(gain); gain.connect(bgmGain);
+                osc.start(now); osc.stop(now + 0.15);
+                step++;
+            }, 180);
+        }
+
+        // ゲームシステム変数
         let scene, camera, renderer, controls;
         let player, enemy;
-        let playerType = 'bike'; // 'bike' or 'tank'
-        let bullets = [], enemyBullets = [];
+        let bullets = [], enemyBullets = [], confettiList = [], particleList = [];
         let keys = {};
-        let isGameRunning = false;
+        let isGameRunning = false, isPaused = false;
+        let lastRamTime = 0;
 
-        let playerStats = { hp: 100, maxHp: 100, speed: 0, maxSpeed: 0.7, accel: 0.025, rotSpeed: 0.04, cooldown: 180 };
-        let enemyStats = { hp: 200, maxHp: 200, lastShoot: 0, speed: 0.1 };
+        let playerStats = { hp: 100, maxHp: 100, speed: 0, maxSpeed: 0.7, accel: 0.025, rotSpeed: 0.04, cooldown: 180, damage: 15 };
+        let enemyStats = { hp: 200, maxHp: 200, lastShoot: 0, speed: 0.1, isBike: false };
 
-        function selectVehicle(type) {
-            playerType = type;
-            document.getElementById('select-bike').classList.toggle('active', type === 'bike');
-            document.getElementById('select-tank').classList.toggle('active', type === 'tank');
+        function updateCustomOptions() {
+            const pType = document.getElementById('sel-player-type').value;
+            const pModelSel = document.getElementById('sel-vehicle-model');
+            const eModelSel = document.getElementById('sel-enemy-model');
+
+            pModelSel.innerHTML = '';
+            eModelSel.innerHTML = '';
+
+            if (pType === 'bike') {
+                pModelSel.innerHTML = '<option value="phantom">Hyper Phantom (スピード型)</option><option value="valkyrie">Valkyrie Heavy (重装バイカー)</option>';
+                eModelSel.innerHTML = '<option value="titan">Titan Vanguard (双砲重戦車)</option><option value="viper">Viper Siege (高速突撃戦車)</option>';
+            } else {
+                pModelSel.innerHTML = '<option value="titan">Titan Vanguard (双砲重戦車)</option><option value="viper">Viper Siege (高速突撃戦車)</option>';
+                eModelSel.innerHTML = '<option value="phantom">Hyper Phantom (スピード型)</option><option value="valkyrie">Valkyrie Heavy (重装バイカー)</option>';
+            }
         }
 
         function init() {
-            // シーン設定
             scene = new THREE.Scene();
-            scene.background = new THREE.Color(0x050510);
-            scene.fog = new THREE.FogExp2(0x050510, 0.012);
-
-            // カメラ設定
             camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000);
 
-            // レンダラー設定
             renderer = new THREE.WebGLRenderer({ antialias: true });
             renderer.setSize(window.innerWidth, window.innerHeight);
             renderer.shadowMap.enabled = true;
             document.getElementById('game-container').appendChild(renderer.domElement);
 
-            // カメラ操作 (OrbitControls)
             controls = new THREE.OrbitControls(camera, renderer.domElement);
             controls.enableDamping = true;
             controls.dampingFactor = 0.05;
-            controls.maxPolarAngle = Math.PI / 2 - 0.05; // 地下に潜らないように制御
-            controls.minDistance = 5;
-            controls.maxDistance = 40;
+            controls.maxPolarAngle = Math.PI / 2 - 0.02;
 
-            // ライティング (サイバーネオン調)
-            const ambientLight = new THREE.AmbientLight(0x223344, 1.2);
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
             scene.add(ambientLight);
 
-            const dirLight = new THREE.DirectionalLight(0x00ffff, 0.8);
-            dirLight.position.set(30, 50, 30);
+            const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
+            dirLight.position.set(40, 80, 40);
             dirLight.castShadow = true;
             scene.add(dirLight);
 
-            const dirLight2 = new THREE.DirectionalLight(0xff0055, 0.5);
-            dirLight2.position.set(-30, 50, -30);
-            scene.add(dirLight2);
-
-            // フィールド（グリッドデザイン）
-            createCyberField();
-
-            // イベントリスナー
-            window.addEventListener('keydown', e => keys[e.code] = true);
+            window.addEventListener('keydown', e => {
+                keys[e.code] = true;
+                if (e.code === 'KeyP' || e.code === 'Escape') togglePause();
+            });
             window.addEventListener('keyup', e => keys[e.code] = false);
             window.addEventListener('resize', onWindowResize);
 
-            // アニメーションループ開始
+            updateCustomOptions();
             animate();
         }
 
-        // SFサイバーフィールド＆障害物の生成
-        function createCyberField() {
-            const floorGeo = new THREE.PlaneGeometry(250, 250);
-            const floorMat = new THREE.MeshStandardMaterial({ color: 0x0a0a15, roughness: 0.5, metalness: 0.8 });
-            const floor = new THREE.Mesh(floorGeo, floorMat);
+        // 高クオリティ3Dモデル生成
+        function buildBikeMesh(modelType, colorHex) {
+            const group = new THREE.Group();
+            const mainMat = new THREE.MeshStandardMaterial({ color: colorHex, metalness: 0.8, roughness: 0.2 });
+            const darkMat = new THREE.MeshStandardMaterial({ color: 0x111115, roughness: 0.7 });
+            const neonMat = new THREE.MeshBasicMaterial({ color: 0x00f0ff });
+
+            // メインカウル
+            const body = new THREE.Mesh(new THREE.BoxGeometry(0.9, 0.7, 2.4), mainMat);
+            body.position.y = 0.7; body.castShadow = true;
+            group.add(body);
+
+            // フロントシールド
+            const shield = new THREE.Mesh(new THREE.BoxGeometry(0.7, 0.5, 0.8), darkMat);
+            shield.position.set(0, 1.0, 0.6);
+            shield.rotation.x = -0.4;
+            group.add(shield);
+
+            // 太いネオンホイール
+            const wheelGeo = new THREE.CylinderGeometry(0.5, 0.5, 0.4, 24);
+            const fWheel = new THREE.Mesh(wheelGeo, darkMat);
+            fWheel.rotation.z = Math.PI / 2; fWheel.position.set(0, 0.5, 1.1);
+            group.add(fWheel);
+
+            const bWheel = fWheel.clone();
+            bWheel.position.set(0, 0.5, -1.1);
+            group.add(bWheel);
+
+            // ホイールネオンリング
+            const ringGeo = new THREE.TorusGeometry(0.35, 0.05, 8, 24);
+            const ring = new THREE.Mesh(ringGeo, neonMat);
+            ring.rotation.y = Math.PI / 2; ring.position.set(0.21, 0.5, 1.1);
+            group.add(ring);
+
+            // マフラー
+            const pipeGeo = new THREE.CylinderGeometry(0.08, 0.1, 1.2);
+            const pipe = new THREE.Mesh(pipeGeo, mainMat);
+            pipe.rotation.x = Math.PI / 2; pipe.position.set(0.45, 0.5, -0.8);
+            group.add(pipe);
+
+            return group;
+        }
+
+        function buildTankMesh(modelType, colorHex) {
+            const group = new THREE.Group();
+            const mainMat = new THREE.MeshStandardMaterial({ color: colorHex, metalness: 0.6, roughness: 0.4 });
+            const darkMat = new THREE.MeshStandardMaterial({ color: 0x151518, roughness: 0.8 });
+            const neonMat = new THREE.MeshBasicMaterial({ color: 0xff0055 });
+
+            // 車体ベース
+            const body = new THREE.Mesh(new THREE.BoxGeometry(3.8, 1.2, 4.8), mainMat);
+            body.position.y = 0.9; body.castShadow = true;
+            group.add(body);
+
+            // 左右キャタピラ
+            const trackGeo = new THREE.BoxGeometry(0.9, 1.1, 5.2);
+            const lTrack = new THREE.Mesh(trackGeo, darkMat); lTrack.position.set(2.1, 0.65, 0);
+            const rTrack = new THREE.Mesh(trackGeo, darkMat); rTrack.position.set(-2.1, 0.65, 0);
+            group.add(lTrack); group.add(rTrack);
+
+            // 砲塔
+            const turret = new THREE.Mesh(new THREE.BoxGeometry(2.6, 1.0, 2.6), mainMat);
+            turret.position.set(0, 1.9, 0);
+            group.add(turret);
+
+            // 連装主砲 (ツインキャノン)
+            const cannonGeo = new THREE.CylinderGeometry(0.18, 0.18, 3.5);
+            const c1 = new THREE.Mesh(cannonGeo, darkMat); c1.rotation.x = Math.PI / 2; c1.position.set(-0.5, 2.0, 2.0);
+            const c2 = new THREE.Mesh(cannonGeo, darkMat); c2.rotation.x = Math.PI / 2; c2.position.set(0.5, 2.0, 2.0);
+            group.add(c1); group.add(c2);
+
+            // センサーライト
+            const light = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.3, 0.2), neonMat);
+            light.position.set(0, 2.1, 1.35);
+            group.add(light);
+
+            return group;
+        }
+
+        // ステージ環境の構築
+        function setupStage(type) {
+            // クリーニング
+            while(scene.children.length > 0){ scene.remove(scene.children[0]); }
+
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.6); scene.add(ambientLight);
+            const dirLight = new THREE.DirectionalLight(0xffffff, 0.8); dirLight.position.set(40, 80, 40); scene.add(dirLight);
+
+            let floorColor = 0x0a0a15, grid1 = 0x00f0ff, grid2 = 0x112244, fogColor = 0x050510;
+            if (type === 'mars') {
+                floorColor = 0x2b0d0d; grid1 = 0xff5500; grid2 = 0x441100; fogColor = 0x150505;
+            } else if (type === 'lava') {
+                floorColor = 0x110500; grid1 = 0xff0000; grid2 = 0x330000; fogColor = 0x0a0000;
+            }
+
+            scene.background = new THREE.Color(fogColor);
+            scene.fog = new THREE.FogExp2(fogColor, 0.012);
+
+            const floor = new THREE.Mesh(
+                new THREE.PlaneGeometry(260, 260),
+                new THREE.MeshStandardMaterial({ color: floorColor, roughness: 0.6, metalness: 0.7 })
+            );
             floor.rotation.x = -Math.PI / 2;
-            floor.receiveShadow = true;
             scene.add(floor);
 
-            // ネオングリッド
-            const grid = new THREE.GridHelper(250, 50, 0x00f0ff, 0x112244);
+            const grid = new THREE.GridHelper(260, 52, grid1, grid2);
             grid.position.y = 0.02;
             scene.add(grid);
 
-            // 障害物（光るタワー）の配置
-            const obstacleGeo = new THREE.BoxGeometry(4, 12, 4);
-            const obstacleMat = new THREE.MeshStandardMaterial({ color: 0x111525, roughness: 0.3, metalness: 0.9 });
-            const edgeMat = new THREE.MeshBasicMaterial({ color: 0x00ffff });
-
-            for (let i = 0; i < 16; i++) {
-                const obstacle = new THREE.Mesh(obstacleGeo, obstacleMat);
-                const x = (Math.random() - 0.5) * 160;
-                const z = (Math.random() - 0.5) * 160;
-                
-                // 中央付近には置かない
-                if (Math.abs(x) < 20 && Math.abs(z) < 20) continue;
-
-                obstacle.position.set(x, 6, z);
-                obstacle.castShadow = true;
-                obstacle.receiveShadow = true;
-                scene.add(obstacle);
-
-                // タワーの縁を光らせる
-                const edges = new THREE.LineSegments(new THREE.EdgesGeometry(obstacleGeo), edgeMat);
-                obstacle.add(edges);
+            // 障害物柱
+            const towerGeo = new THREE.BoxGeometry(5, 15, 5);
+            const towerMat = new THREE.MeshStandardMaterial({ color: 0x101420, metalness: 0.8 });
+            for(let i=0; i<14; i++) {
+                const tower = new THREE.Mesh(towerGeo, towerMat);
+                const x = (Math.random() - 0.5) * 180;
+                const z = (Math.random() - 0.5) * 180;
+                if (Math.abs(x) < 25 && Math.abs(z) < 25) continue;
+                tower.position.set(x, 7.5, z);
+                scene.add(tower);
             }
         }
 
-        // バイクモデル生成
-        function buildBikeModel(color) {
-            const group = new THREE.Group();
-            const bodyMat = new THREE.MeshStandardMaterial({ color: color, metalness: 0.7, roughness: 0.2 });
-            const neonMat = new THREE.MeshBasicMaterial({ color: 0x00ffff });
+        function setupBattle() {
+            initAudio();
+            const pType = document.getElementById('sel-player-type').value;
+            const pModel = document.getElementById('sel-vehicle-model').value;
+            const eModel = document.getElementById('sel-enemy-model').value;
+            const stageType = document.getElementById('sel-stage').value;
+            const weaponAtt = document.getElementById('sel-attachment-weapon').value;
+            const modAtt = document.getElementById('sel-attachment-mod').value;
 
-            const body = new THREE.Mesh(new THREE.BoxGeometry(0.8, 0.6, 2.2), bodyMat);
-            body.position.y = 0.6;
-            body.castShadow = true;
-            group.add(body);
+            setupStage(stageType);
 
-            // タイヤ
-            const wheelGeo = new THREE.CylinderGeometry(0.45, 0.45, 0.3, 16);
-            const wheelMat = new THREE.MeshStandardMaterial({ color: 0x111111, roughness: 0.5 });
-            
-            const frontWheel = new THREE.Mesh(wheelGeo, wheelMat);
-            frontWheel.rotation.z = Math.PI / 2;
-            frontWheel.position.set(0, 0.45, 1.0);
-            group.add(frontWheel);
-
-            const backWheel = frontWheel.clone();
-            backWheel.position.set(0, 0.45, -1.0);
-            group.add(backWheel);
-
-            // ネオンライン
-            const line = new THREE.Mesh(new THREE.BoxGeometry(0.82, 0.1, 2.0), neonMat);
-            line.position.y = 0.7;
-            group.add(line);
-
-            return group;
-        }
-
-        // 戦車モデル生成
-        function buildTankModel(color) {
-            const group = new THREE.Group();
-            const bodyMat = new THREE.MeshStandardMaterial({ color: color, metalness: 0.5, roughness: 0.5 });
-            const darkMat = new THREE.MeshStandardMaterial({ color: 0x111111 });
-
-            // 本体
-            const body = new THREE.Mesh(new THREE.BoxGeometry(3.5, 1.2, 4.5), bodyMat);
-            body.position.y = 0.8;
-            body.castShadow = true;
-            group.add(body);
-
-            // クローラー（キャタピラ）
-            const trackGeo = new THREE.BoxGeometry(0.8, 1.0, 4.7);
-            const leftTrack = new THREE.Mesh(trackGeo, darkMat);
-            leftTrack.position.set(1.9, 0.6, 0);
-            group.add(leftTrack);
-
-            const rightTrack = leftTrack.clone();
-            rightTrack.position.set(-1.9, 0.6, 0);
-            group.add(rightTrack);
-
-            // 砲塔
-            const turret = new THREE.Mesh(new THREE.BoxGeometry(2.4, 0.9, 2.4), bodyMat);
-            turret.position.set(0, 1.8, 0);
-            group.add(turret);
-
-            // 主砲
-            const cannon = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.2, 3.2), darkMat);
-            cannon.rotation.x = Math.PI / 2;
-            cannon.position.set(0, 1.8, 1.8);
-            group.add(cannon);
-
-            return group;
-        }
-
-        function setupEntities() {
-            if (player) scene.remove(player);
-            if (enemy) scene.remove(enemy);
-
-            if (playerType === 'bike') {
-                player = buildBikeModel(0x00f0ff);
-                enemy = buildTankModel(0xff0055);
-                
-                playerStats = { hp: 100, maxHp: 100, speed: 0, maxSpeed: 0.75, accel: 0.03, rotSpeed: 0.045, cooldown: 150 };
-                enemyStats = { hp: 220, maxHp: 220, lastShoot: 0, speed: 0.08 };
-
-                document.getElementById('player-type-label').innerText = 'BIKE';
-                document.getElementById('enemy-type-label').innerText = 'TANK';
+            // プレイヤー作成
+            if (pType === 'bike') {
+                player = buildBikeMesh(pModel, 0x00f0ff);
+                enemy = buildTankMesh(eModel, 0xff0055);
+                playerStats = { hp: 100, maxHp: 100, speed: 0, maxSpeed: 0.75, accel: 0.03, rotSpeed: 0.045, cooldown: 160, damage: 14 };
+                enemyStats = { hp: 220, maxHp: 220, lastShoot: 0, speed: 0.08, isBike: false };
+                document.getElementById('player-label').innerText = 'BIKE';
+                document.getElementById('enemy-label').innerText = 'TANK';
             } else {
-                player = buildTankModel(0x00ff88);
-                enemy = buildBikeModel(0xff0055);
-
-                playerStats = { hp: 200, maxHp: 200, speed: 0, maxSpeed: 0.4, accel: 0.015, rotSpeed: 0.025, cooldown: 400 };
-                enemyStats = { hp: 100, maxHp: 100, lastShoot: 0, speed: 0.5 };
-
-                document.getElementById('player-type-label').innerText = 'TANK';
-                document.getElementById('enemy-type-label').innerText = 'BIKE';
+                player = buildTankMesh(pModel, 0x00ff88);
+                enemy = buildBikeMesh(eModel, 0xff0055);
+                playerStats = { hp: 200, maxHp: 200, speed: 0, maxSpeed: 0.42, accel: 0.016, rotSpeed: 0.026, cooldown: 380, damage: 35 };
+                enemyStats = { hp: 110, maxHp: 110, lastShoot: 0, speed: 0.48, isBike: true };
+                document.getElementById('player-label').innerText = 'TANK';
+                document.getElementById('enemy-label').innerText = 'BIKE';
             }
 
-            player.position.set(0, 0, 40);
-            enemy.position.set(0, 0, -40);
+            // アタッチメント適用
+            if (weaponAtt === 'rapid') { playerStats.cooldown *= 0.6; playerStats.damage *= 0.7; }
+            if (weaponAtt === 'heavy') { playerStats.cooldown *= 1.4; playerStats.damage *= 1.6; }
+            if (modAtt === 'armor') { playerStats.hp *= 1.2; playerStats.maxHp *= 1.2; }
+            if (modAtt === 'turbo') { playerStats.maxSpeed *= 1.25; }
 
-            scene.add(player);
-            scene.add(enemy);
-        }
+            player.position.set(0, 0, 45);
+            enemy.position.set(0, 0, -45);
+            scene.add(player); scene.add(enemy);
 
-        function startGame() {
-            document.getElementById('title-screen').style.display = 'none';
-            document.getElementById('hud').style.display = 'block';
-            document.getElementById('controls-info').style.display = 'block';
-            
-            setupEntities();
-            resetGame();
-            isGameRunning = true;
-        }
-
-        function restartGame() {
-            document.getElementById('gameover-screen').style.display = 'none';
-            setupEntities();
-            resetGame();
-            isGameRunning = true;
-        }
-
-        function resetGame() {
-            player.position.set(0, 0, 40);
-            player.rotation.set(0, 0, 0);
-            enemy.position.set(0, 0, -40);
-            enemy.rotation.set(0, 0, 0);
-
-            bullets.forEach(b => scene.remove(b.mesh));
-            enemyBullets.forEach(b => scene.remove(b.mesh));
-            bullets = [];
-            enemyBullets = [];
-
-            // カメラ位置初期化
-            camera.position.set(0, 8, 55);
+            bullets = []; enemyBullets = []; confettiList = []; particleList = [];
+            camera.position.set(0, 10, 65);
             controls.target.copy(player.position);
 
             updateHUD();
         }
 
+        function startGame() {
+            document.getElementById('title-screen').style.display = 'none';
+            document.getElementById('hud').style.display = 'block';
+            document.getElementById('pause-btn-hud').style.display = 'block';
+            document.getElementById('controls-info').style.display = 'block';
+            
+            setupBattle();
+            isGameRunning = true; isPaused = false;
+        }
+
+        function togglePause() {
+            if (!isGameRunning) return;
+            isPaused = !isPaused;
+            document.getElementById('pause-screen').style.display = isPaused ? 'flex' : 'none';
+        }
+
+        function returnToTitle() {
+            isGameRunning = false; isPaused = false;
+            document.getElementById('pause-screen').style.display = 'none';
+            document.getElementById('gameover-screen').style.display = 'none';
+            document.getElementById('hud').style.display = 'none';
+            document.getElementById('pause-btn-hud').style.display = 'none';
+            document.getElementById('controls-info').style.display = 'none';
+            document.getElementById('title-screen').style.display = 'flex';
+        }
+
+        function restartGame() {
+            document.getElementById('gameover-screen').style.display = 'none';
+            setupBattle();
+            isGameRunning = true; isPaused = false;
+        }
+
         function updateHUD() {
             const pPct = Math.max(0, (playerStats.hp / playerStats.maxHp) * 100);
             const ePct = Math.max(0, (enemyStats.hp / enemyStats.maxHp) * 100);
-            
             document.getElementById('player-hp-fill').style.width = pPct + '%';
             document.getElementById('enemy-hp-fill').style.width = ePct + '%';
         }
 
-        function triggerDamageFlash() {
-            const flash = document.getElementById('damage-flash');
-            flash.style.opacity = '1';
-            setTimeout(() => { flash.style.opacity = '0'; }, 120);
+        function triggerFlash(color) {
+            const f = document.getElementById('flash-overlay');
+            f.style.background = color; f.style.opacity = '0.4';
+            setTimeout(() => f.style.opacity = '0', 120);
         }
 
-        // プレイヤー攻撃処理
-        function shootPlayerBullet() {
-            const isTank = playerType === 'tank';
-            const radius = isTank ? 0.4 : 0.2;
-            const geo = new THREE.SphereGeometry(radius, 8, 8);
-            const mat = new THREE.MeshBasicMaterial({ color: isTank ? 0x00ff88 : 0x00ffff });
+        // プレイヤー射撃
+        function shootPlayer() {
+            playSound('shoot');
+            const geo = new THREE.SphereGeometry(0.3, 8, 8);
+            const mat = new THREE.MeshBasicMaterial({ color: 0x00f0ff });
             const mesh = new THREE.Mesh(geo, mat);
-
-            // 弾の発射位置
-            mesh.position.copy(player.position);
-            mesh.position.y += isTank ? 1.8 : 0.6;
+            mesh.position.copy(player.position); mesh.position.y += 1.0;
 
             const dir = new THREE.Vector3(0, 0, -1).applyQuaternion(player.quaternion);
-            bullets.push({ mesh: mesh, dir: dir, life: 120, damage: isTank ? 35 : 12, speed: isTank ? 1.5 : 1.3 });
+            bullets.push({ mesh: mesh, dir: dir, life: 110, damage: playerStats.damage });
             scene.add(mesh);
         }
 
-        // 敵攻撃処理
-        function shootEnemyBullet() {
-            const isEnemyTank = playerType === 'bike';
-            const radius = isEnemyTank ? 0.5 : 0.25;
-            const geo = new THREE.SphereGeometry(radius, 8, 8);
+        // 敵射撃
+        function shootEnemy() {
+            playSound('shoot');
+            const geo = new THREE.SphereGeometry(0.35, 8, 8);
             const mat = new THREE.MeshBasicMaterial({ color: 0xff0055 });
             const mesh = new THREE.Mesh(geo, mat);
+            mesh.position.copy(enemy.position); mesh.position.y += 1.2;
 
-            mesh.position.copy(enemy.position);
-            mesh.position.y += isEnemyTank ? 1.8 : 0.6;
-
-            // プレイヤー方向へ狙撃
-            const targetPos = player.position.clone();
-            targetPos.y += 0.8; // 狙いをプレイヤーの胴体に合わせる
-            const dir = new THREE.Vector3().subVectors(targetPos, mesh.position).normalize();
-
-            enemyBullets.push({ 
-                mesh: mesh, 
-                dir: dir, 
-                life: 140, 
-                damage: isEnemyTank ? 25 : 10, 
-                speed: isEnemyTank ? 1.1 : 1.2 
-            });
+            const target = player.position.clone(); target.y += 0.8;
+            const dir = new THREE.Vector3().subVectors(target, mesh.position).normalize();
+            enemyBullets.push({ mesh: mesh, dir: dir, life: 130, damage: enemyStats.isBike ? 12 : 28 });
             scene.add(mesh);
+        }
+
+        // 花吹雪 (紙吹雪) エフェクト生成
+        function spawnConfetti() {
+            const colors = [0xff0055, 0x00f0ff, 0x00ff88, 0xffee00, 0xff00ff, 0xffffff];
+            const geo = new THREE.PlaneGeometry(0.4, 0.4);
+            for (let i = 0; i < 180; i++) {
+                const mat = new THREE.MeshBasicMaterial({ 
+                    color: colors[Math.floor(Math.random() * colors.length)], 
+                    side: THREE.DoubleSide 
+                });
+                const p = new THREE.Mesh(geo, mat);
+                p.position.set(
+                    player.position.x + (Math.random() - 0.5) * 30,
+                    player.position.y + 15 + Math.random() * 15,
+                    player.position.z + (Math.random() - 0.5) * 30
+                );
+                p.rotation.set(Math.random() * 3, Math.random() * 3, Math.random() * 3);
+                p.userData = { 
+                    vy: -0.1 - Math.random() * 0.15, 
+                    rx: (Math.random() - 0.5) * 0.1, 
+                    rz: (Math.random() - 0.5) * 0.1 
+                };
+                confettiList.push(p);
+                scene.add(p);
+            }
         }
 
         function updatePlayer() {
-            // 移動キー入力
             if (keys['KeyW']) playerStats.speed = Math.min(playerStats.speed + playerStats.accel, playerStats.maxSpeed);
             else if (keys['KeyS']) playerStats.speed = Math.max(playerStats.speed - playerStats.accel, -playerStats.maxSpeed / 2);
-            else playerStats.speed *= 0.94; // 自然減速
+            else playerStats.speed *= 0.94;
 
             if (keys['KeyA']) player.rotation.y += playerStats.rotSpeed;
             if (keys['KeyD']) player.rotation.y -= playerStats.rotSpeed;
 
             player.translateZ(-playerStats.speed);
+            player.position.x = Math.max(-120, Math.min(120, player.position.x));
+            player.position.z = Math.max(-120, Math.min(120, player.position.z));
 
-            // エリア制限
-            player.position.x = Math.max(-110, Math.min(110, player.position.x));
-            player.position.z = Math.max(-110, Math.min(110, player.position.z));
-
-            // 攻撃
             if (keys['Space']) {
                 if (!player.lastShoot || Date.now() - player.lastShoot > playerStats.cooldown) {
-                    shootPlayerBullet();
-                    player.lastShoot = Date.now();
+                    shootPlayer(); player.lastShoot = Date.now();
                 }
             }
 
-            // カメラターゲットをプレイヤーに追従
             const camOffset = camera.position.clone().sub(controls.target);
             controls.target.copy(player.position);
             camera.position.copy(player.position).add(camOffset);
@@ -543,103 +653,116 @@
         }
 
         function updateEnemy() {
-            // 敵AIの行動
             enemy.lookAt(player.position.x, enemy.position.y, player.position.z);
-
             const dist = enemy.position.distanceTo(player.position);
 
-            if (playerType === 'bike') {
-                // 敵が戦車の場合：適度な距離を維持しながらじわじわ接近
-                if (dist > 18) enemy.translateZ(enemyStats.speed);
-                
-                if (Date.now() - enemyStats.lastShoot > 1600) {
-                    shootEnemyBullet();
-                    enemyStats.lastShoot = Date.now();
+            if (enemyStats.isBike) {
+                // 敵がバイク：猛スピードでプレイヤーへ突っ込んで体当たり！
+                enemy.translateZ(enemyStats.speed);
+
+                // 体当たり（突進）衝突判定！
+                if (dist < 2.4 && Date.now() - lastRamTime > 1000) {
+                    playerStats.hp -= 25;
+                    enemyStats.hp -= 15;
+                    playSound('ram');
+                    triggerFlash('rgba(255, 0, 85, 0.5)');
+
+                    // ノックバック処理（弾き飛ばされる）
+                    const knockDir = new THREE.Vector3().subVectors(player.position, enemy.position).normalize();
+                    player.position.addScaledVector(knockDir, 3.5);
+                    
+                    lastRamTime = Date.now();
+                    updateHUD();
+                    checkWinLoss();
+                }
+
+                if (Date.now() - enemyStats.lastShoot > 600) {
+                    shootEnemy(); enemyStats.lastShoot = Date.now();
                 }
             } else {
-                // 敵がバイクの場合：高速で円を描くように周回
-                enemy.translateZ(enemyStats.speed);
-                enemy.rotation.y += 0.02;
-
-                if (Date.now() - enemyStats.lastShoot > 400) {
-                    shootEnemyBullet();
-                    enemyStats.lastShoot = Date.now();
+                // 敵が戦車：距離を維持して砲撃
+                if (dist > 22) enemy.translateZ(enemyStats.speed);
+                if (Date.now() - enemyStats.lastShoot > 1800) {
+                    shootEnemy(); enemyStats.lastShoot = Date.now();
                 }
             }
         }
 
         function updateBullets() {
-            // プレイヤーの弾更新
+            // プレイヤー弾
             for (let i = bullets.length - 1; i >= 0; i--) {
                 let b = bullets[i];
-                b.mesh.position.addScaledVector(b.dir, b.speed);
+                b.mesh.position.addScaledVector(b.dir, 1.4);
                 b.life--;
 
-                // 当たり判定 (敵)
-                const hitDist = playerType === 'tank' ? 2.0 : 2.8; // 敵のサイズに合わせて判定調整
-                if (b.mesh.position.distanceTo(enemy.position) < hitDist) {
+                if (b.mesh.position.distanceTo(enemy.position) < 2.5) {
                     enemyStats.hp -= b.damage;
-                    scene.remove(b.mesh);
-                    bullets.splice(i, 1);
-                    updateHUD();
-                    checkWinLoss();
-                    continue;
+                    playSound('hit');
+                    scene.remove(b.mesh); bullets.splice(i, 1);
+                    updateHUD(); checkWinLoss(); continue;
                 }
-
-                if (b.life <= 0) {
-                    scene.remove(b.mesh);
-                    bullets.splice(i, 1);
-                }
+                if (b.life <= 0) { scene.remove(b.mesh); bullets.splice(i, 1); }
             }
 
-            // 敵の弾更新（戦車の攻撃判定も修正済み）
+            // 敵弾
             for (let i = enemyBullets.length - 1; i >= 0; i--) {
                 let b = enemyBullets[i];
-                b.mesh.position.addScaledVector(b.dir, b.speed);
+                b.mesh.position.addScaledVector(b.dir, 1.1);
                 b.life--;
 
-                // 当たり判定 (プレイヤー) - Y軸も含めた距離で判定
-                const playerHitDist = playerType === 'tank' ? 2.8 : 1.8;
-                
-                if (b.mesh.position.distanceTo(player.position) < playerHitDist) {
+                if (b.mesh.position.distanceTo(player.position) < 2.2) {
                     playerStats.hp -= b.damage;
-                    triggerDamageFlash(); // 被弾エフェクト
-                    scene.remove(b.mesh);
-                    enemyBullets.splice(i, 1);
-                    updateHUD();
-                    checkWinLoss();
-                    continue;
+                    playSound('hit'); triggerFlash('rgba(255,0,0,0.4)');
+                    scene.remove(b.mesh); enemyBullets.splice(i, 1);
+                    updateHUD(); checkWinLoss(); continue;
                 }
+                if (b.life <= 0) { scene.remove(b.mesh); enemyBullets.splice(i, 1); }
+            }
+        }
 
-                if (b.life <= 0) {
-                    scene.remove(b.mesh);
-                    enemyBullets.splice(i, 1);
-                }
+        function updateConfetti() {
+            for (let i = confettiList.length - 1; i >= 0; i--) {
+                let p = confettiList[i];
+                p.position.y += p.userData.vy;
+                p.rotation.x += p.userData.rx;
+                p.rotation.z += p.userData.rz;
+                if (p.position.y < 0) p.position.y = 20;
             }
         }
 
         function checkWinLoss() {
             if (enemyStats.hp <= 0) {
-                endGame("VICTORY!", "敵マシンを撃破しました！ミッション完了！");
+                endGame("VICTORY!", "敵機体を撃破しました！ミッション完了！", true);
             } else if (playerStats.hp <= 0) {
-                endGame("GAME OVER", "あなたのマシンは破壊されました...");
+                endGame("GAME OVER", "あなたの機体は破壊されました...", false);
             }
         }
 
-        function endGame(title, msg) {
+        function endGame(title, msg, isWin) {
             isGameRunning = false;
             document.getElementById('gameover-title').innerText = title;
             document.getElementById('gameover-msg').innerText = msg;
             document.getElementById('gameover-screen').style.display = 'flex';
+
+            if (isWin) {
+                playSound('win');
+                spawnConfetti();
+            } else {
+                playSound('lose');
+            }
         }
 
         function animate() {
             requestAnimationFrame(animate);
 
-            if (isGameRunning) {
+            if (isGameRunning && !isPaused) {
                 updatePlayer();
                 updateEnemy();
                 updateBullets();
+            }
+
+            if (confettiList.length > 0) {
+                updateConfetti();
             }
 
             renderer.render(scene, camera);
