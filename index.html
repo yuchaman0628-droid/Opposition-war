@@ -2,103 +2,117 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Opposition-war</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Opposition-war Online</title>
     <style>
-        * { box-sizing: border-box; }
+        * { box-sizing: border-box; touch-action: manipulation; }
         body {
-            margin: 0;
-            overflow: hidden;
-            background-color: #030308;
+            margin: 0; overflow: hidden; background-color: #030308;
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            user-select: none;
-            color: #fff;
+            user-select: none; color: #fff;
         }
 
         #game-container { width: 100vw; height: 100vh; }
 
         /* フラッシュエフェクト */
         #flash-overlay {
-            position: absolute;
-            top: 0; left: 0; width: 100%; height: 100%;
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
             pointer-events: none; opacity: 0; transition: opacity 0.1s ease-out; z-index: 20;
         }
 
-        /* 全画面オーバーレイUI */
+        /* オーバーレイUI */
         .overlay {
-            position: absolute;
-            top: 0; left: 0; width: 100%; height: 100%;
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
             display: flex; flex-direction: column; justify-content: center; align-items: center;
-            background: rgba(5, 5, 12, 0.88); backdrop-filter: blur(8px);
-            z-index: 10;
+            background: rgba(5, 5, 12, 0.9); backdrop-filter: blur(8px); z-index: 10;
+            padding: 20px; text-align: center;
         }
 
         h1 {
-            font-size: 3.8rem; margin: 0 0 10px 0; letter-spacing: 6px;
+            font-size: 3.2rem; margin: 0 0 10px 0; letter-spacing: 4px;
             color: #00f0ff; text-shadow: 0 0 20px #00f0ff, 0 0 40px #ff0055;
         }
 
-        p { font-size: 1.1rem; margin-bottom: 20px; color: #a0a5c0; }
+        p { font-size: 1rem; margin-bottom: 20px; color: #a0a5c0; }
 
-        /* セレクトコンテナ */
         .config-grid {
-            display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px;
-            max-width: 900px; width: 90%; margin-bottom: 25px;
+            display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 15px;
+            max-width: 850px; width: 100%; margin-bottom: 20px; max-height: 60vh; overflow-y: auto;
         }
 
         .config-box {
-            background: rgba(255, 255, 255, 0.04); border: 1px solid #333;
-            border-radius: 8px; padding: 12px; text-align: left;
+            background: rgba(255, 255, 255, 0.05); border: 1px solid #333;
+            border-radius: 8px; padding: 15px; text-align: left;
         }
 
         .config-box h4 { margin: 0 0 10px 0; color: #00f0ff; border-bottom: 1px solid rgba(0, 240, 255, 0.2); padding-bottom: 5px; }
 
         label { display: block; font-size: 0.85rem; color: #ccc; margin-top: 8px; }
 
-        select, input[type="range"] {
-            width: 100%; padding: 6px; background: #111525; border: 1px solid #00f0ff;
+        select, input[type="text"], input[type="range"] {
+            width: 100%; padding: 8px; background: #111525; border: 1px solid #00f0ff;
             color: #fff; border-radius: 4px; margin-top: 4px; font-size: 0.9rem;
         }
 
         .btn {
-            padding: 12px 40px; font-size: 1.3rem; font-weight: bold; color: #fff;
+            padding: 12px 35px; font-size: 1.2rem; font-weight: bold; color: #fff;
             background: linear-gradient(45deg, #ff0055, #ff5500); border: none;
-            border-radius: 30px; cursor: pointer; box-shadow: 0 0 20px rgba(255, 0, 85, 0.6);
-            transition: 0.2s; margin: 5px;
+            border-radius: 30px; cursor: pointer; box-shadow: 0 0 15px rgba(255, 0, 85, 0.6);
+            transition: 0.2s; margin: 5px; display: inline-block;
         }
 
-        .btn:hover { transform: scale(1.05); box-shadow: 0 0 35px rgba(255, 0, 85, 0.9); }
+        .btn:hover { transform: scale(1.05); box-shadow: 0 0 25px rgba(255, 0, 85, 0.9); }
         .btn-secondary { background: linear-gradient(45deg, #0088ff, #00f0ff); box-shadow: 0 0 15px rgba(0, 240, 255, 0.5); }
 
         /* HUD */
         #hud {
-            position: absolute; top: 20px; left: 20px; z-index: 5; display: none;
-            background: rgba(10, 10, 20, 0.75); padding: 15px 20px; border-radius: 8px;
+            position: absolute; top: 15px; left: 15px; z-index: 5; display: none;
+            background: rgba(10, 10, 20, 0.8); padding: 12px 18px; border-radius: 8px;
             border: 1px solid rgba(0, 240, 255, 0.3); text-shadow: 0 0 5px #000;
         }
 
-        .hp-bar-bg { width: 220px; height: 12px; background: #222; border-radius: 6px; overflow: hidden; margin: 4px 0 10px 0; }
+        .hp-bar-bg { width: 180px; height: 10px; background: #222; border-radius: 5px; overflow: hidden; margin: 4px 0 8px 0; }
         .hp-bar-fill { height: 100%; width: 100%; transition: width 0.15s ease; }
         #player-hp-fill { background: linear-gradient(90deg, #00ff88, #00f0ff); }
         #enemy-hp-fill { background: linear-gradient(90deg, #ff0055, #ff5500); }
 
         #pause-btn-hud {
-            position: absolute; top: 20px; right: 20px; z-index: 5; display: none;
-            padding: 8px 18px; font-size: 1rem;
+            position: absolute; top: 15px; right: 15px; z-index: 5; display: none;
+            padding: 8px 16px; font-size: 0.9rem;
         }
 
-        #controls-info {
-            position: absolute; bottom: 20px; left: 20px; color: #00f0ff; font-size: 0.85rem;
-            z-index: 5; display: none; background: rgba(10, 10, 20, 0.75); padding: 10px 15px;
-            border-radius: 8px; border: 1px solid rgba(0, 240, 255, 0.3);
+        /* スマホ操作バーチャルボタン */
+        #touch-controls {
+            position: absolute; bottom: 15px; left: 0; width: 100%;
+            display: none; justify-content: space-between; padding: 0 20px;
+            z-index: 6; pointer-events: none;
         }
 
-        /* ポーズ画面の設定スライダー */
-        .volume-group { margin: 15px 0; width: 260px; text-align: left; }
+        .touch-group { display: flex; gap: 10px; pointer-events: auto; }
+
+        .t-btn {
+            width: 60px; height: 60px; border-radius: 50%;
+            background: rgba(0, 240, 255, 0.25); border: 2px solid #00f0ff;
+            color: #fff; font-size: 1.4rem; font-weight: bold;
+            display: flex; justify-content: center; align-items: center;
+            box-shadow: 0 0 10px rgba(0, 240, 255, 0.4); active { background: rgba(0, 240, 255, 0.6); }
+        }
+
+        .t-btn-fire {
+            width: 70px; height: 70px; background: rgba(255, 0, 85, 0.3); border-color: #ff0055;
+            box-shadow: 0 0 15px rgba(255, 0, 85, 0.5);
+        }
+
+        /* オンライン接続エリア */
+        .online-panel {
+            background: rgba(0, 240, 255, 0.1); border: 1px solid #00f0ff;
+            border-radius: 8px; padding: 10px; margin-top: 10px;
+        }
     </style>
-    <!-- Three.js & OrbitControls -->
+    <!-- Three.js / OrbitControls / PeerJS (P2P通信ライブラリ) -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
 </head>
 <body>
 
@@ -107,81 +121,77 @@
 
     <!-- HUD -->
     <div id="hud">
-        <div>PLAYER HP (<span id="player-label">BIKE</span>)</div>
+        <div>1P (YOU): <span id="player-label">BIKE</span></div>
         <div class="hp-bar-bg"><div id="player-hp-fill" class="hp-bar-fill"></div></div>
-        <div>ENEMY HP (<span id="enemy-label">TANK</span>)</div>
+        <div>2P (ENEMY): <span id="enemy-label">TANK</span></div>
         <div class="hp-bar-bg"><div id="enemy-hp-fill" class="hp-bar-fill"></div></div>
     </div>
 
-    <button id="pause-btn-hud" class="btn btn-secondary" onclick="togglePause()">PAUSE [P]</button>
+    <button id="pause-btn-hud" class="btn btn-secondary" onclick="togglePause()">PAUSE</button>
 
-    <div id="controls-info">
-        [W/S] 移動 | [A/D] 旋回 | [SPACE] 攻撃 | [P/ESC] ポーズ | [ドラッグ] 視点変更
+    <!-- タッチボタン (スマホ対応) -->
+    <div id="touch-controls">
+        <div class="touch-group">
+            <div class="t-btn" id="tb-left">◀</div>
+            <div class="t-btn" id="tb-right">▶</div>
+        </div>
+        <div class="touch-group">
+            <div class="t-btn" id="tb-down">▼</div>
+            <div class="t-btn" id="tb-up">▲</div>
+            <div class="t-btn t-btn-fire" id="tb-fire">🔥</div>
+        </div>
     </div>
 
-    <!-- タイトル＆設定画面 -->
+    <!-- タイトル画面 -->
     <div id="title-screen" class="overlay">
         <h1>Opposition-war</h1>
-        <p>機体・アタッチメント・ステージをカスタムして出撃せよ！</p>
-        
+        <p>3Dバイク VS 戦車 — オンライン対戦 ＆ スマホ対応</p>
+
         <div class="config-grid">
-            <!-- プレイヤータイプ設定 -->
             <div class="config-box">
-                <h4>1. 操作タイプ</h4>
-                <label>基本カテゴリ</label>
-                <select id="sel-player-type" onchange="updateCustomOptions()">
-                    <option value="bike">バイク (機動特化)</option>
-                    <option value="tank">戦車 (重火力・高耐久)</option>
+                <h4>1. 対戦モード</h4>
+                <select id="sel-mode" onchange="toggleOnlineUI()">
+                    <option value="offline">1P vs CPU (オフライン)</option>
+                    <option value="online">2P オンライン対戦</option>
                 </select>
-                <label>機体モデル</label>
-                <select id="sel-vehicle-model"></select>
+
+                <div id="online-ui" class="online-panel" style="display: none;">
+                    <div>自分のルームID: <b id="my-peer-id" style="color:#00f0ff;">生成中...</b></div>
+                    <label>相手のルームIDを入力:</label>
+                    <input type="text" id="target-peer-id" placeholder="相手のIDを入力">
+                    <button class="btn btn-secondary" style="font-size:0.9rem; padding:6px 15px; margin-top:8px;" onclick="connectToPeer()">接続してプレイ</button>
+                    <div id="online-status" style="font-size:0.8rem; color:#00ff88; margin-top:5px;"></div>
+                </div>
             </div>
 
-            <!-- アタッチメント設定 -->
             <div class="config-box">
-                <h4>2. アタッチメント</h4>
-                <label>主兵装</label>
-                <select id="sel-attachment-weapon">
-                    <option value="standard">標準キャノン (バランス)</option>
-                    <option value="rapid">高圧ラピッドガン (連射)</option>
-                    <option value="heavy">メガブラスター (単発高威力)</option>
+                <h4>2. マシン選択</h4>
+                <label>操作タイプ</label>
+                <select id="sel-player-type">
+                    <option value="bike">バイク (高速・連射)</option>
+                    <option value="tank">戦車 (高耐久・強力砲撃)</option>
                 </select>
-                <label>強化モジュール</label>
-                <select id="sel-attachment-mod">
-                    <option value="armor">重装甲プレート (HP+20%)</option>
-                    <option value="turbo">ターボブースター (移動速度+20%)</option>
-                </select>
-            </div>
-
-            <!-- ステージ & 敵設定 -->
-            <div class="config-box">
-                <h4>3. ステージ & 敵</h4>
-                <label>バトルステージ</label>
+                <label>ステージ</label>
                 <select id="sel-stage">
-                    <option value="cyber">サイバーネオンシティ</option>
-                    <option value="mars">火星レッドデザート</option>
-                    <option value="lava">溶岩アリーナ</option>
+                    <option value="cyber">サイバーアリーナ</option>
+                    <option value="mars">火星ベース</option>
                 </select>
-                <label>敵機体モデル</label>
-                <select id="sel-enemy-model"></select>
             </div>
         </div>
 
-        <button class="btn" onclick="startGame()">BATTLE START</button>
+        <button class="btn" onclick="startGame()">GAME START</button>
     </div>
 
     <!-- ポーズ画面 -->
     <div id="pause-screen" class="overlay" style="display: none;">
         <h1>PAUSED</h1>
-        <div class="volume-group">
+        <div style="width:250px; text-align:left;">
             <label>BGM 音量: <span id="bgm-val">50%</span></label>
             <input type="range" id="slider-bgm" min="0" max="100" value="50" oninput="updateAudioSettings()">
-        </div>
-        <div class="volume-group">
-            <label>効果音 (SE) 音量: <span id="sfx-val">70%</span></label>
+            <label>効果音 音量: <span id="sfx-val">70%</span></label>
             <input type="range" id="slider-sfx" min="0" max="100" value="70" oninput="updateAudioSettings()">
         </div>
-        <div style="margin-top: 20px;">
+        <div style="margin-top:20px;">
             <button class="btn btn-secondary" onclick="togglePause()">再開</button>
             <button class="btn" onclick="returnToTitle()">タイトルへ戻る</button>
         </div>
@@ -196,348 +206,179 @@
     </div>
 
     <script>
-        // Web Audio API によるサウンド生成システム (外部ファイル不要)
-        let audioCtx = null;
-        let bgmGain = null, sfxGain = null;
-        let bgmInterval = null;
-
+        // WEB AUDIO SYNTH
+        let audioCtx = null, bgmGain = null, sfxGain = null, bgmInterval = null;
         function initAudio() {
             if (audioCtx) return;
             const AudioContext = window.AudioContext || window.webkitAudioContext;
             audioCtx = new AudioContext();
-
-            bgmGain = audioCtx.createGain();
-            sfxGain = audioCtx.createGain();
-
-            bgmGain.connect(audioCtx.destination);
-            sfxGain.connect(audioCtx.destination);
-            
-            updateAudioSettings();
-            startBGM();
+            bgmGain = audioCtx.createGain(); sfxGain = audioCtx.createGain();
+            bgmGain.connect(audioCtx.destination); sfxGain.connect(audioCtx.destination);
+            updateAudioSettings(); startBGM();
         }
-
         function updateAudioSettings() {
             const bgmVal = document.getElementById('slider-bgm').value;
             const sfxVal = document.getElementById('slider-sfx').value;
             document.getElementById('bgm-val').innerText = bgmVal + '%';
             document.getElementById('sfx-val').innerText = sfxVal + '%';
-
-            if (bgmGain) bgmGain.gain.value = (bgmVal / 100) * 0.25;
-            if (sfxGain) sfxGain.gain.value = (sfxVal / 100) * 0.5;
+            if (bgmGain) bgmGain.gain.value = (bgmVal / 100) * 0.2;
+            if (sfxGain) sfxGain.gain.value = (sfxVal / 100) * 0.4;
         }
-
         function playSound(type) {
             if (!audioCtx) return;
             const now = audioCtx.currentTime;
-
             if (type === 'shoot') {
-                const osc = audioCtx.createOscillator();
-                const gain = audioCtx.createGain();
-                osc.type = 'sawtooth';
-                osc.frequency.setValueAtTime(300, now);
-                osc.frequency.exponentialRampToValueAtTime(40, now + 0.12);
-                gain.gain.setValueAtTime(0.4, now);
-                gain.gain.exponentialRampToValueAtTime(0.01, now + 0.12);
-                osc.connect(gain); gain.connect(sfxGain);
-                osc.start(now); osc.stop(now + 0.12);
-            } else if (type === 'hit' || type === 'ram') {
-                const bufSize = audioCtx.sampleRate * (type === 'ram' ? 0.3 : 0.15);
-                const buffer = audioCtx.createBuffer(1, bufSize, audioCtx.sampleRate);
-                const data = buffer.getChannelData(0);
-                for (let i = 0; i < bufSize; i++) data[i] = Math.random() * 2 - 1;
-                const noise = audioCtx.createBufferSource();
-                noise.buffer = buffer;
-                const filter = audioCtx.createBiquadFilter();
-                filter.type = 'lowpass';
-                filter.frequency.setValueAtTime(type === 'ram' ? 1200 : 600, now);
-                filter.frequency.exponentialRampToValueAtTime(80, now + (type === 'ram' ? 0.3 : 0.15));
-                const gain = audioCtx.createGain();
-                gain.gain.setValueAtTime(type === 'ram' ? 0.8 : 0.5, now);
-                gain.gain.exponentialRampToValueAtTime(0.01, now + (type === 'ram' ? 0.3 : 0.15));
-                noise.connect(filter); filter.connect(gain); gain.connect(sfxGain);
-                noise.start(now);
+                const osc = audioCtx.createOscillator(), gain = audioCtx.createGain();
+                osc.type = 'sawtooth'; osc.frequency.setValueAtTime(280, now);
+                osc.frequency.exponentialRampToValueAtTime(40, now + 0.1);
+                gain.gain.setValueAtTime(0.3, now); gain.gain.exponentialRampToValueAtTime(0.01, now + 0.1);
+                osc.connect(gain); gain.connect(sfxGain); osc.start(now); osc.stop(now + 0.1);
+            } else if (type === 'hit') {
+                const osc = audioCtx.createOscillator(), gain = audioCtx.createGain();
+                osc.type = 'square'; osc.frequency.setValueAtTime(100, now);
+                gain.gain.setValueAtTime(0.4, now); gain.gain.exponentialRampToValueAtTime(0.01, now + 0.15);
+                osc.connect(gain); gain.connect(sfxGain); osc.start(now); osc.stop(now + 0.15);
             } else if (type === 'win') {
-                const notes = [261.63, 329.63, 392.00, 523.25, 659.25];
-                notes.forEach((freq, idx) => {
-                    const osc = audioCtx.createOscillator();
-                    const gain = audioCtx.createGain();
-                    osc.type = 'triangle';
-                    osc.frequency.setValueAtTime(freq, now + idx * 0.1);
-                    gain.gain.setValueAtTime(0.5, now + idx * 0.1);
-                    gain.gain.exponentialRampToValueAtTime(0.01, now + idx * 0.1 + 0.3);
-                    osc.connect(gain); gain.connect(sfxGain);
-                    osc.start(now + idx * 0.1); osc.stop(now + idx * 0.1 + 0.3);
-                });
-            } else if (type === 'lose') {
-                const notes = [300, 250, 200, 140];
-                notes.forEach((freq, idx) => {
-                    const osc = audioCtx.createOscillator();
-                    const gain = audioCtx.createGain();
-                    osc.type = 'sawtooth';
-                    osc.frequency.setValueAtTime(freq, now + idx * 0.15);
-                    gain.gain.setValueAtTime(0.5, now + idx * 0.15);
-                    gain.gain.exponentialRampToValueAtTime(0.01, now + idx * 0.15 + 0.25);
-                    osc.connect(gain); gain.connect(sfxGain);
-                    osc.start(now + idx * 0.15); osc.stop(now + idx * 0.15 + 0.25);
+                [261, 329, 392, 523].forEach((f, i) => {
+                    const osc = audioCtx.createOscillator(), gain = audioCtx.createGain();
+                    osc.frequency.setValueAtTime(f, now + i*0.1); gain.gain.setValueAtTime(0.3, now + i*0.1);
+                    gain.gain.exponentialRampToValueAtTime(0.01, now + i*0.1 + 0.25);
+                    osc.connect(gain); gain.connect(sfxGain); osc.start(now + i*0.1); osc.stop(now + i*0.1 + 0.25);
                 });
             }
         }
-
-        // BGMループ生成
         function startBGM() {
             if (bgmInterval) clearInterval(bgmInterval);
-            let step = 0;
-            const bassline = [110, 110, 130, 110, 146.8, 130, 110, 98];
+            let step = 0; const notes = [110, 110, 130, 146];
             bgmInterval = setInterval(() => {
                 if (!audioCtx || !isGameRunning || isPaused) return;
-                const now = audioCtx.currentTime;
-                const osc = audioCtx.createOscillator();
-                const gain = audioCtx.createGain();
-                osc.type = 'sawtooth';
-                osc.frequency.setValueAtTime(bassline[step % bassline.length], now);
-                gain.gain.setValueAtTime(0.15, now);
-                gain.gain.exponentialRampToValueAtTime(0.01, now + 0.15);
-                osc.connect(gain); gain.connect(bgmGain);
-                osc.start(now); osc.stop(now + 0.15);
-                step++;
-            }, 180);
+                const now = audioCtx.currentTime, osc = audioCtx.createOscillator(), gain = audioCtx.createGain();
+                osc.frequency.setValueAtTime(notes[step % 4], now);
+                gain.gain.setValueAtTime(0.1, now); gain.gain.exponentialRampToValueAtTime(0.01, now + 0.15);
+                osc.connect(gain); gain.connect(bgmGain); osc.start(now); osc.stop(now + 0.15); step++;
+            }, 200);
         }
 
-        // ゲームシステム変数
+        // PEERJS (ONLINE)
+        let peer = null, peerConn = null, isHost = false, isOnline = false;
+        function initPeer() {
+            const randomId = Math.floor(100000 + Math.random() * 900000).toString();
+            peer = new Peer(randomId);
+            peer.on('open', id => { document.getElementById('my-peer-id').innerText = id; });
+            peer.on('connection', conn => {
+                peerConn = conn; isHost = true; setupPeerEvents();
+                document.getElementById('online-status').innerText = "対戦相手が接続しました！";
+            });
+        }
+        function connectToPeer() {
+            const targetId = document.getElementById('target-peer-id').value;
+            if (!targetId) return alert("相手のルームIDを入力してください");
+            peerConn = peer.connect(targetId); isHost = false; setupPeerEvents();
+            document.getElementById('online-status').innerText = "接続中...";
+        }
+        function setupPeerEvents() {
+            peerConn.on('open', () => {
+                isOnline = true;
+                document.getElementById('online-status').innerText = "接続完了！ゲームを開始できます";
+            });
+            peerConn.on('data', data => handleNetworkData(data));
+        }
+        function sendNetworkData(data) { if (isOnline && peerConn && peerConn.open) peerConn.send(data); }
+
+        // THREE.JS GAME ENGINE
         let scene, camera, renderer, controls;
-        let player, enemy;
-        let bullets = [], enemyBullets = [], confettiList = [], particleList = [];
+        let player, enemy, bullets = [], enemyBullets = [];
         let keys = {};
         let isGameRunning = false, isPaused = false;
-        let lastRamTime = 0;
+        let playerStats = { hp: 100, maxHp: 100, speed: 0, maxSpeed: 0.7, accel: 0.025, rotSpeed: 0.04 }, enemyStats = { hp: 100, maxHp: 100 };
 
-        let playerStats = { hp: 100, maxHp: 100, speed: 0, maxSpeed: 0.7, accel: 0.025, rotSpeed: 0.04, cooldown: 180, damage: 15 };
-        let enemyStats = { hp: 200, maxHp: 200, lastShoot: 0, speed: 0.1, isBike: false };
-
-        function updateCustomOptions() {
-            const pType = document.getElementById('sel-player-type').value;
-            const pModelSel = document.getElementById('sel-vehicle-model');
-            const eModelSel = document.getElementById('sel-enemy-model');
-
-            pModelSel.innerHTML = '';
-            eModelSel.innerHTML = '';
-
-            if (pType === 'bike') {
-                pModelSel.innerHTML = '<option value="phantom">Hyper Phantom (スピード型)</option><option value="valkyrie">Valkyrie Heavy (重装バイカー)</option>';
-                eModelSel.innerHTML = '<option value="titan">Titan Vanguard (双砲重戦車)</option><option value="viper">Viper Siege (高速突撃戦車)</option>';
-            } else {
-                pModelSel.innerHTML = '<option value="titan">Titan Vanguard (双砲重戦車)</option><option value="viper">Viper Siege (高速突撃戦車)</option>';
-                eModelSel.innerHTML = '<option value="phantom">Hyper Phantom (スピード型)</option><option value="valkyrie">Valkyrie Heavy (重装バイカー)</option>';
-            }
+        function toggleOnlineUI() {
+            const mode = document.getElementById('sel-mode').value;
+            document.getElementById('online-ui').style.display = (mode === 'online') ? 'block' : 'none';
         }
 
         function init() {
             scene = new THREE.Scene();
             camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000);
-
             renderer = new THREE.WebGLRenderer({ antialias: true });
             renderer.setSize(window.innerWidth, window.innerHeight);
-            renderer.shadowMap.enabled = true;
             document.getElementById('game-container').appendChild(renderer.domElement);
 
             controls = new THREE.OrbitControls(camera, renderer.domElement);
-            controls.enableDamping = true;
-            controls.dampingFactor = 0.05;
-            controls.maxPolarAngle = Math.PI / 2 - 0.02;
+            controls.enableDamping = true; controls.maxPolarAngle = Math.PI / 2 - 0.02;
 
-            const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
-            scene.add(ambientLight);
+            scene.add(new THREE.AmbientLight(0xffffff, 0.7));
+            const light = new THREE.DirectionalLight(0xffffff, 0.8); light.position.set(30, 60, 30); scene.add(light);
 
-            const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
-            dirLight.position.set(40, 80, 40);
-            dirLight.castShadow = true;
-            scene.add(dirLight);
+            // スマホ判定＆タッチ操作バインド
+            if ('ontouchend' in window || navigator.maxTouchPoints > 0) {
+                document.getElementById('touch-controls').style.display = 'flex';
+                bindTouch('tb-left', 'KeyA'); bindTouch('tb-right', 'KeyD');
+                bindTouch('tb-up', 'KeyW'); bindTouch('tb-down', 'KeyS');
+                bindTouch('tb-fire', 'Space');
+            }
 
-            window.addEventListener('keydown', e => {
-                keys[e.code] = true;
-                if (e.code === 'KeyP' || e.code === 'Escape') togglePause();
-            });
+            window.addEventListener('keydown', e => { keys[e.code] = true; if(e.code==='KeyP') togglePause(); });
             window.addEventListener('keyup', e => keys[e.code] = false);
             window.addEventListener('resize', onWindowResize);
 
-            updateCustomOptions();
-            animate();
+            initPeer(); animate();
         }
 
-        // 高クオリティ3Dモデル生成
-        function buildBikeMesh(modelType, colorHex) {
-            const group = new THREE.Group();
-            const mainMat = new THREE.MeshStandardMaterial({ color: colorHex, metalness: 0.8, roughness: 0.2 });
-            const darkMat = new THREE.MeshStandardMaterial({ color: 0x111115, roughness: 0.7 });
-            const neonMat = new THREE.MeshBasicMaterial({ color: 0x00f0ff });
-
-            // メインカウル
-            const body = new THREE.Mesh(new THREE.BoxGeometry(0.9, 0.7, 2.4), mainMat);
-            body.position.y = 0.7; body.castShadow = true;
-            group.add(body);
-
-            // フロントシールド
-            const shield = new THREE.Mesh(new THREE.BoxGeometry(0.7, 0.5, 0.8), darkMat);
-            shield.position.set(0, 1.0, 0.6);
-            shield.rotation.x = -0.4;
-            group.add(shield);
-
-            // 太いネオンホイール
-            const wheelGeo = new THREE.CylinderGeometry(0.5, 0.5, 0.4, 24);
-            const fWheel = new THREE.Mesh(wheelGeo, darkMat);
-            fWheel.rotation.z = Math.PI / 2; fWheel.position.set(0, 0.5, 1.1);
-            group.add(fWheel);
-
-            const bWheel = fWheel.clone();
-            bWheel.position.set(0, 0.5, -1.1);
-            group.add(bWheel);
-
-            // ホイールネオンリング
-            const ringGeo = new THREE.TorusGeometry(0.35, 0.05, 8, 24);
-            const ring = new THREE.Mesh(ringGeo, neonMat);
-            ring.rotation.y = Math.PI / 2; ring.position.set(0.21, 0.5, 1.1);
-            group.add(ring);
-
-            // マフラー
-            const pipeGeo = new THREE.CylinderGeometry(0.08, 0.1, 1.2);
-            const pipe = new THREE.Mesh(pipeGeo, mainMat);
-            pipe.rotation.x = Math.PI / 2; pipe.position.set(0.45, 0.5, -0.8);
-            group.add(pipe);
-
-            return group;
+        function bindTouch(id, code) {
+            const btn = document.getElementById(id);
+            btn.addEventListener('touchstart', (e) => { e.preventDefault(); keys[code] = true; });
+            btn.addEventListener('touchend', (e) => { e.preventDefault(); keys[code] = false; });
         }
 
-        function buildTankMesh(modelType, colorHex) {
-            const group = new THREE.Group();
-            const mainMat = new THREE.MeshStandardMaterial({ color: colorHex, metalness: 0.6, roughness: 0.4 });
-            const darkMat = new THREE.MeshStandardMaterial({ color: 0x151518, roughness: 0.8 });
-            const neonMat = new THREE.MeshBasicMaterial({ color: 0xff0055 });
-
-            // 車体ベース
-            const body = new THREE.Mesh(new THREE.BoxGeometry(3.8, 1.2, 4.8), mainMat);
-            body.position.y = 0.9; body.castShadow = true;
-            group.add(body);
-
-            // 左右キャタピラ
-            const trackGeo = new THREE.BoxGeometry(0.9, 1.1, 5.2);
-            const lTrack = new THREE.Mesh(trackGeo, darkMat); lTrack.position.set(2.1, 0.65, 0);
-            const rTrack = new THREE.Mesh(trackGeo, darkMat); rTrack.position.set(-2.1, 0.65, 0);
-            group.add(lTrack); group.add(rTrack);
-
-            // 砲塔
-            const turret = new THREE.Mesh(new THREE.BoxGeometry(2.6, 1.0, 2.6), mainMat);
-            turret.position.set(0, 1.9, 0);
-            group.add(turret);
-
-            // 連装主砲 (ツインキャノン)
-            const cannonGeo = new THREE.CylinderGeometry(0.18, 0.18, 3.5);
-            const c1 = new THREE.Mesh(cannonGeo, darkMat); c1.rotation.x = Math.PI / 2; c1.position.set(-0.5, 2.0, 2.0);
-            const c2 = new THREE.Mesh(cannonGeo, darkMat); c2.rotation.x = Math.PI / 2; c2.position.set(0.5, 2.0, 2.0);
-            group.add(c1); group.add(c2);
-
-            // センサーライト
-            const light = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.3, 0.2), neonMat);
-            light.position.set(0, 2.1, 1.35);
-            group.add(light);
-
-            return group;
-        }
-
-        // ステージ環境の構築
-        function setupStage(type) {
-            // クリーニング
-            while(scene.children.length > 0){ scene.remove(scene.children[0]); }
-
-            const ambientLight = new THREE.AmbientLight(0xffffff, 0.6); scene.add(ambientLight);
-            const dirLight = new THREE.DirectionalLight(0xffffff, 0.8); dirLight.position.set(40, 80, 40); scene.add(dirLight);
-
-            let floorColor = 0x0a0a15, grid1 = 0x00f0ff, grid2 = 0x112244, fogColor = 0x050510;
-            if (type === 'mars') {
-                floorColor = 0x2b0d0d; grid1 = 0xff5500; grid2 = 0x441100; fogColor = 0x150505;
-            } else if (type === 'lava') {
-                floorColor = 0x110500; grid1 = 0xff0000; grid2 = 0x330000; fogColor = 0x0a0000;
-            }
-
-            scene.background = new THREE.Color(fogColor);
-            scene.fog = new THREE.FogExp2(fogColor, 0.012);
-
-            const floor = new THREE.Mesh(
-                new THREE.PlaneGeometry(260, 260),
-                new THREE.MeshStandardMaterial({ color: floorColor, roughness: 0.6, metalness: 0.7 })
-            );
-            floor.rotation.x = -Math.PI / 2;
-            scene.add(floor);
-
-            const grid = new THREE.GridHelper(260, 52, grid1, grid2);
-            grid.position.y = 0.02;
-            scene.add(grid);
-
-            // 障害物柱
-            const towerGeo = new THREE.BoxGeometry(5, 15, 5);
-            const towerMat = new THREE.MeshStandardMaterial({ color: 0x101420, metalness: 0.8 });
-            for(let i=0; i<14; i++) {
-                const tower = new THREE.Mesh(towerGeo, towerMat);
-                const x = (Math.random() - 0.5) * 180;
-                const z = (Math.random() - 0.5) * 180;
-                if (Math.abs(x) < 25 && Math.abs(z) < 25) continue;
-                tower.position.set(x, 7.5, z);
-                scene.add(tower);
-            }
-        }
-
-        function setupBattle() {
-            initAudio();
-            const pType = document.getElementById('sel-player-type').value;
-            const pModel = document.getElementById('sel-vehicle-model').value;
-            const eModel = document.getElementById('sel-enemy-model').value;
-            const stageType = document.getElementById('sel-stage').value;
-            const weaponAtt = document.getElementById('sel-attachment-weapon').value;
-            const modAtt = document.getElementById('sel-attachment-mod').value;
-
-            setupStage(stageType);
-
-            // プレイヤー作成
-            if (pType === 'bike') {
-                player = buildBikeMesh(pModel, 0x00f0ff);
-                enemy = buildTankMesh(eModel, 0xff0055);
-                playerStats = { hp: 100, maxHp: 100, speed: 0, maxSpeed: 0.75, accel: 0.03, rotSpeed: 0.045, cooldown: 160, damage: 14 };
-                enemyStats = { hp: 220, maxHp: 220, lastShoot: 0, speed: 0.08, isBike: false };
-                document.getElementById('player-label').innerText = 'BIKE';
-                document.getElementById('enemy-label').innerText = 'TANK';
+        function buildVehicleMesh(type, color) {
+            const group = new THREE.Group(), mat = new THREE.MeshStandardMaterial({ color: color });
+            if (type === 'bike') {
+                const body = new THREE.Mesh(new THREE.BoxGeometry(0.8, 0.6, 2.0), mat); body.position.y = 0.5; group.add(body);
+                const wGeo = new THREE.CylinderGeometry(0.4, 0.4, 0.3);
+                const w1 = new THREE.Mesh(wGeo, mat); w1.rotation.z = Math.PI/2; w1.position.set(0, 0.4, 0.9); group.add(w1);
+                const w2 = w1.clone(); w2.position.set(0, 0.4, -0.9); group.add(w2);
             } else {
-                player = buildTankMesh(pModel, 0x00ff88);
-                enemy = buildBikeMesh(eModel, 0xff0055);
-                playerStats = { hp: 200, maxHp: 200, speed: 0, maxSpeed: 0.42, accel: 0.016, rotSpeed: 0.026, cooldown: 380, damage: 35 };
-                enemyStats = { hp: 110, maxHp: 110, lastShoot: 0, speed: 0.48, isBike: true };
-                document.getElementById('player-label').innerText = 'TANK';
-                document.getElementById('enemy-label').innerText = 'BIKE';
+                const body = new THREE.Mesh(new THREE.BoxGeometry(3.2, 1.1, 4.2), mat); body.position.y = 0.8; group.add(body);
+                const turret = new THREE.Mesh(new THREE.BoxGeometry(2.0, 0.8, 2.0), mat); turret.position.set(0, 1.6, 0); group.add(turret);
+                const cannon = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.15, 2.8), mat); cannon.rotation.x = Math.PI/2; cannon.position.set(0, 1.6, 1.6); group.add(cannon);
             }
+            return group;
+        }
 
-            // アタッチメント適用
-            if (weaponAtt === 'rapid') { playerStats.cooldown *= 0.6; playerStats.damage *= 0.7; }
-            if (weaponAtt === 'heavy') { playerStats.cooldown *= 1.4; playerStats.damage *= 1.6; }
-            if (modAtt === 'armor') { playerStats.hp *= 1.2; playerStats.maxHp *= 1.2; }
-            if (modAtt === 'turbo') { playerStats.maxSpeed *= 1.25; }
+        function setupScene() {
+            while(scene.children.length > 0) scene.remove(scene.children[0]);
+            scene.add(new THREE.AmbientLight(0xffffff, 0.7));
+            const light = new THREE.DirectionalLight(0xffffff, 0.8); light.position.set(30, 60, 30); scene.add(light);
 
-            player.position.set(0, 0, 45);
-            enemy.position.set(0, 0, -45);
+            const floor = new THREE.Mesh(new THREE.PlaneGeometry(240, 240), new THREE.MeshStandardMaterial({ color: 0x0a0a15 }));
+            floor.rotation.x = -Math.PI / 2; scene.add(floor);
+            const grid = new THREE.GridHelper(240, 48, 0x00f0ff, 0x112244); grid.position.y = 0.01; scene.add(grid);
+
+            const pType = document.getElementById('sel-player-type').value;
+            const eType = pType === 'bike' ? 'tank' : 'bike';
+
+            player = buildVehicleMesh(pType, 0x00f0ff);
+            enemy = buildVehicleMesh(eType, 0xff0055);
+
+            player.position.set(0, 0, 40);
+            enemy.position.set(0, 0, -40);
             scene.add(player); scene.add(enemy);
 
-            bullets = []; enemyBullets = []; confettiList = []; particleList = [];
-            camera.position.set(0, 10, 65);
-            controls.target.copy(player.position);
+            playerStats = { hp: 100, maxHp: 100, speed: 0, maxSpeed: pType==='bike'?0.75:0.4, accel: 0.02, rotSpeed: 0.04 };
+            enemyStats = { hp: 100, maxHp: 100 };
+            bullets = []; enemyBullets = [];
 
+            camera.position.set(0, 10, 60); controls.target.copy(player.position);
             updateHUD();
         }
 
         function startGame() {
+            initAudio();
             document.getElementById('title-screen').style.display = 'none';
             document.getElementById('hud').style.display = 'block';
             document.getElementById('pause-btn-hud').style.display = 'block';
-            document.getElementById('controls-info').style.display = 'block';
-            
-            setupBattle();
-            isGameRunning = true; isPaused = false;
+            setupScene(); isGameRunning = true; isPaused = false;
         }
 
         function togglePause() {
@@ -552,80 +393,34 @@
             document.getElementById('gameover-screen').style.display = 'none';
             document.getElementById('hud').style.display = 'none';
             document.getElementById('pause-btn-hud').style.display = 'none';
-            document.getElementById('controls-info').style.display = 'none';
             document.getElementById('title-screen').style.display = 'flex';
         }
 
         function restartGame() {
             document.getElementById('gameover-screen').style.display = 'none';
-            setupBattle();
-            isGameRunning = true; isPaused = false;
+            setupScene(); isGameRunning = true; isPaused = false;
         }
 
         function updateHUD() {
-            const pPct = Math.max(0, (playerStats.hp / playerStats.maxHp) * 100);
-            const ePct = Math.max(0, (enemyStats.hp / enemyStats.maxHp) * 100);
-            document.getElementById('player-hp-fill').style.width = pPct + '%';
-            document.getElementById('enemy-hp-fill').style.width = ePct + '%';
+            document.getElementById('player-hp-fill').style.width = Math.max(0, (playerStats.hp / playerStats.maxHp)*100) + '%';
+            document.getElementById('enemy-hp-fill').style.width = Math.max(0, (enemyStats.hp / enemyStats.maxHp)*100) + '%';
         }
 
-        function triggerFlash(color) {
-            const f = document.getElementById('flash-overlay');
-            f.style.background = color; f.style.opacity = '0.4';
-            setTimeout(() => f.style.opacity = '0', 120);
-        }
-
-        // プレイヤー射撃
-        function shootPlayer() {
+        function shootBullet(isPlayer) {
             playSound('shoot');
             const geo = new THREE.SphereGeometry(0.3, 8, 8);
-            const mat = new THREE.MeshBasicMaterial({ color: 0x00f0ff });
+            const mat = new THREE.MeshBasicMaterial({ color: isPlayer ? 0x00f0ff : 0xff0055 });
             const mesh = new THREE.Mesh(geo, mat);
-            mesh.position.copy(player.position); mesh.position.y += 1.0;
+            const src = isPlayer ? player : enemy;
 
-            const dir = new THREE.Vector3(0, 0, -1).applyQuaternion(player.quaternion);
-            bullets.push({ mesh: mesh, dir: dir, life: 110, damage: playerStats.damage });
+            mesh.position.copy(src.position); mesh.position.y += 0.8;
+            const dir = new THREE.Vector3(0, 0, -1).applyQuaternion(src.quaternion);
+            
+            if(isPlayer) bullets.push({ mesh, dir, life: 100 });
+            else enemyBullets.push({ mesh, dir, life: 100 });
             scene.add(mesh);
-        }
 
-        // 敵射撃
-        function shootEnemy() {
-            playSound('shoot');
-            const geo = new THREE.SphereGeometry(0.35, 8, 8);
-            const mat = new THREE.MeshBasicMaterial({ color: 0xff0055 });
-            const mesh = new THREE.Mesh(geo, mat);
-            mesh.position.copy(enemy.position); mesh.position.y += 1.2;
-
-            const target = player.position.clone(); target.y += 0.8;
-            const dir = new THREE.Vector3().subVectors(target, mesh.position).normalize();
-            enemyBullets.push({ mesh: mesh, dir: dir, life: 130, damage: enemyStats.isBike ? 12 : 28 });
-            scene.add(mesh);
-        }
-
-        // 花吹雪 (紙吹雪) エフェクト生成
-        function spawnConfetti() {
-            const colors = [0xff0055, 0x00f0ff, 0x00ff88, 0xffee00, 0xff00ff, 0xffffff];
-            const geo = new THREE.PlaneGeometry(0.4, 0.4);
-            for (let i = 0; i < 180; i++) {
-                const mat = new THREE.MeshBasicMaterial({ 
-                    color: colors[Math.floor(Math.random() * colors.length)], 
-                    side: THREE.DoubleSide 
-                });
-                const p = new THREE.Mesh(geo, mat);
-                p.position.set(
-                    player.position.x + (Math.random() - 0.5) * 30,
-                    player.position.y + 15 + Math.random() * 15,
-                    player.position.z + (Math.random() - 0.5) * 30
-                );
-                p.rotation.set(Math.random() * 3, Math.random() * 3, Math.random() * 3);
-                p.userData = { 
-                    vy: -0.1 - Math.random() * 0.15, 
-                    rx: (Math.random() - 0.5) * 0.1, 
-                    rz: (Math.random() - 0.5) * 0.1 
-                };
-                confettiList.push(p);
-                scene.add(p);
-            }
+            if(isPlayer && isOnline) sendNetworkData({ type: 'shoot' });
         }
 
         function updatePlayer() {
@@ -637,134 +432,83 @@
             if (keys['KeyD']) player.rotation.y -= playerStats.rotSpeed;
 
             player.translateZ(-playerStats.speed);
-            player.position.x = Math.max(-120, Math.min(120, player.position.x));
-            player.position.z = Math.max(-120, Math.min(120, player.position.z));
 
             if (keys['Space']) {
-                if (!player.lastShoot || Date.now() - player.lastShoot > playerStats.cooldown) {
-                    shootPlayer(); player.lastShoot = Date.now();
+                if (!player.lastShoot || Date.now() - player.lastShoot > 200) {
+                    shootBullet(true); player.lastShoot = Date.now();
                 }
             }
 
             const camOffset = camera.position.clone().sub(controls.target);
-            controls.target.copy(player.position);
-            camera.position.copy(player.position).add(camOffset);
+            controls.target.copy(player.position); camera.position.copy(player.position).add(camOffset);
             controls.update();
+
+            // 位置情報の通信（2P対戦）
+            if (isOnline) {
+                sendNetworkData({
+                    type: 'transform',
+                    x: player.position.x, z: player.position.z, rot: player.rotation.y, hp: playerStats.hp
+                });
+            }
         }
 
-        function updateEnemy() {
+        function updateEnemyCPU() {
             enemy.lookAt(player.position.x, enemy.position.y, player.position.z);
-            const dist = enemy.position.distanceTo(player.position);
+            if (enemy.position.distanceTo(player.position) > 18) enemy.translateZ(0.12);
+            if (!enemy.lastShoot || Date.now() - enemy.lastShoot > 1500) {
+                shootBullet(false); enemy.lastShoot = Date.now();
+            }
+        }
 
-            if (enemyStats.isBike) {
-                // 敵がバイク：猛スピードでプレイヤーへ突っ込んで体当たり！
-                enemy.translateZ(enemyStats.speed);
-
-                // 体当たり（突進）衝突判定！
-                if (dist < 2.4 && Date.now() - lastRamTime > 1000) {
-                    playerStats.hp -= 25;
-                    enemyStats.hp -= 15;
-                    playSound('ram');
-                    triggerFlash('rgba(255, 0, 85, 0.5)');
-
-                    // ノックバック処理（弾き飛ばされる）
-                    const knockDir = new THREE.Vector3().subVectors(player.position, enemy.position).normalize();
-                    player.position.addScaledVector(knockDir, 3.5);
-                    
-                    lastRamTime = Date.now();
-                    updateHUD();
-                    checkWinLoss();
-                }
-
-                if (Date.now() - enemyStats.lastShoot > 600) {
-                    shootEnemy(); enemyStats.lastShoot = Date.now();
-                }
-            } else {
-                // 敵が戦車：距離を維持して砲撃
-                if (dist > 22) enemy.translateZ(enemyStats.speed);
-                if (Date.now() - enemyStats.lastShoot > 1800) {
-                    shootEnemy(); enemyStats.lastShoot = Date.now();
-                }
+        function handleNetworkData(data) {
+            if (data.type === 'transform') {
+                enemy.position.x = data.x; enemy.position.z = data.z; enemy.rotation.y = data.rot;
+                enemyStats.hp = data.hp; updateHUD();
+            } else if (data.type === 'shoot') {
+                shootBullet(false);
             }
         }
 
         function updateBullets() {
-            // プレイヤー弾
             for (let i = bullets.length - 1; i >= 0; i--) {
-                let b = bullets[i];
-                b.mesh.position.addScaledVector(b.dir, 1.4);
-                b.life--;
-
-                if (b.mesh.position.distanceTo(enemy.position) < 2.5) {
-                    enemyStats.hp -= b.damage;
-                    playSound('hit');
-                    scene.remove(b.mesh); bullets.splice(i, 1);
+                let b = bullets[i]; b.mesh.position.addScaledVector(b.dir, 1.3); b.life--;
+                if (b.mesh.position.distanceTo(enemy.position) < 2.2) {
+                    enemyStats.hp -= 10; playSound('hit'); scene.remove(b.mesh); bullets.splice(i, 1);
                     updateHUD(); checkWinLoss(); continue;
                 }
                 if (b.life <= 0) { scene.remove(b.mesh); bullets.splice(i, 1); }
             }
 
-            // 敵弾
             for (let i = enemyBullets.length - 1; i >= 0; i--) {
-                let b = enemyBullets[i];
-                b.mesh.position.addScaledVector(b.dir, 1.1);
-                b.life--;
-
+                let b = enemyBullets[i]; b.mesh.position.addScaledVector(b.dir, 1.3); b.life--;
                 if (b.mesh.position.distanceTo(player.position) < 2.2) {
-                    playerStats.hp -= b.damage;
-                    playSound('hit'); triggerFlash('rgba(255,0,0,0.4)');
-                    scene.remove(b.mesh); enemyBullets.splice(i, 1);
+                    playerStats.hp -= 10; playSound('hit'); scene.remove(b.mesh); enemyBullets.splice(i, 1);
                     updateHUD(); checkWinLoss(); continue;
                 }
                 if (b.life <= 0) { scene.remove(b.mesh); enemyBullets.splice(i, 1); }
             }
         }
 
-        function updateConfetti() {
-            for (let i = confettiList.length - 1; i >= 0; i--) {
-                let p = confettiList[i];
-                p.position.y += p.userData.vy;
-                p.rotation.x += p.userData.rx;
-                p.rotation.z += p.userData.rz;
-                if (p.position.y < 0) p.position.y = 20;
-            }
-        }
-
         function checkWinLoss() {
-            if (enemyStats.hp <= 0) {
-                endGame("VICTORY!", "敵機体を撃破しました！ミッション完了！", true);
-            } else if (playerStats.hp <= 0) {
-                endGame("GAME OVER", "あなたの機体は破壊されました...", false);
-            }
+            if (enemyStats.hp <= 0) endGame("VICTORY!", "相手を撃破しました！");
+            else if (playerStats.hp <= 0) endGame("GAME OVER", "破壊されました...");
         }
 
-        function endGame(title, msg, isWin) {
+        function endGame(title, msg) {
             isGameRunning = false;
             document.getElementById('gameover-title').innerText = title;
             document.getElementById('gameover-msg').innerText = msg;
             document.getElementById('gameover-screen').style.display = 'flex';
-
-            if (isWin) {
-                playSound('win');
-                spawnConfetti();
-            } else {
-                playSound('lose');
-            }
+            if (title === "VICTORY!") playSound('win');
         }
 
         function animate() {
             requestAnimationFrame(animate);
-
             if (isGameRunning && !isPaused) {
                 updatePlayer();
-                updateEnemy();
+                if (!isOnline) updateEnemyCPU();
                 updateBullets();
             }
-
-            if (confettiList.length > 0) {
-                updateConfetti();
-            }
-
             renderer.render(scene, camera);
         }
 
